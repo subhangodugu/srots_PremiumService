@@ -1,78 +1,22 @@
 package com.srots.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class LoginResponse {
 	private String token;
 	private String userId;
 	private String fullName;
 	private String role;
 	private String collegeId;
+	private String username;
 	private String accountStatus; // ADDED
-
-	public LoginResponse(String token, String userId, String fullName, String role, String collegeId,
-			String accountStatus) {
-		super();
-		this.token = token;
-		this.userId = userId;
-		this.fullName = fullName;
-		this.role = role;
-		this.collegeId = collegeId;
-		this.accountStatus = accountStatus;
-	}
-
-	public LoginResponse() {
-		super();
-		// TODO Auto-generated constructor stub
-	}
-
-	public String getToken() {
-		return token;
-	}
-
-	public void setToken(String token) {
-		this.token = token;
-	}
-
-	public String getUserId() {
-		return userId;
-	}
-
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
-
-	public String getFullName() {
-		return fullName;
-	}
-
-	public void setFullName(String fullName) {
-		this.fullName = fullName;
-	}
-
-	public String getRole() {
-		return role;
-	}
-
-	public void setRole(String role) {
-		this.role = role;
-	}
-
-	public String getCollegeId() {
-		return collegeId;
-	}
-
-	public void setCollegeId(String collegeId) {
-		this.collegeId = collegeId;
-	}
-
-	public String getAccountStatus() {
-		return accountStatus;
-	}
-
-	public void setAccountStatus(String accountStatus) {
-		this.accountStatus = accountStatus;
-	}
-
+	private String message; // ADDED
+	private boolean premiumActive; // ADDED
 }

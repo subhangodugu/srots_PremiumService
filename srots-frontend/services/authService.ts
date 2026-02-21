@@ -19,6 +19,7 @@ export const AuthService = {
       role: data.role as Role,
       collegeId: data.collegeId || null,
       accountStatus: data.accountStatus, // ADDED
+      message: data.message, // ADDED
       token: data.token,
       avatar: data.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.fullName)}&background=0D8ABC&color=fff`,
 
@@ -73,6 +74,7 @@ export const AuthService = {
       role: data.role as Role,
       collegeId: data.collegeId || null,
       accountStatus: data.accountStatus, // ADDED
+      message: data.message, // ADDED
       avatar: data.avatarUrl || '',
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,

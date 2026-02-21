@@ -1,6 +1,5 @@
 package com.srots.service;
 
-import com.srots.dto.PremiumResponseDTO;
 import com.srots.model.Student;
 import com.srots.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,43 +16,30 @@ public class PremiumService {
     private final EmailService emailService;
 
     @Transactional
-    public PremiumResponseDTO activatePremium(
-            String studentId,
-            com.srots.dto.PremiumSubscribeRequestDTO dto) {
+    public String activatePremium(String username, String utr) {
 
-        Student student = studentRepository.findByUserId(studentId)
+        Student student = studentRepository.findByUserUsername(username)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
         // ✅ Validate UTR
-        if (dto.getUtr() == null || dto.getUtr().isBlank() || dto.getUtr().trim().length() < 10) {
-            throw new RuntimeException("Invalid UTR. Must be at least 10 characters.");
+        if (utr == null || utr.trim().length() < 6) {
+            throw new RuntimeException("Invalid UTR. Must be at least 6 characters.");
         }
 
-        LocalDate today = LocalDate.now();
-        LocalDate newExpiry;
-
-        // ✅ extend if already active
-        if (student.isPremiumActive()
-                && student.getPremiumExpiryDate() != null
-                && student.getPremiumExpiryDate().isAfter(today)) {
-
-            newExpiry = student.getPremiumExpiryDate().plusMonths(dto.getMonths());
-        } else {
-            newExpiry = today.plusMonths(dto.getMonths());
-        }
-
-        // 🔓 AUTO ACTIVATE AFTER RECHARGE
+        // 🔓 ACTIVATE
         student.setPremiumActive(true);
-        student.setPremiumExpiryDate(newExpiry);
         student.setAccountStatus("ACTIVE");
+        student.setPremiumExpiryDate(LocalDate.now().plusMonths(12));
 
         studentRepository.save(student);
 
         // 📧 send mail
-        emailService.sendPremiumActivatedMail(student.getEmail(), newExpiry);
+        try {
+            emailService.sendPremiumActivatedMail(student.getEmail(), student.getPremiumExpiryDate());
+        } catch (Exception e) {
+            System.err.println("Email failed but premium activated: " + e.getMessage());
+        }
 
-        return new PremiumResponseDTO(
-                "Premium activated successfully",
-                newExpiry);
+        return "Premium activated successfully";
     }
 }

@@ -10,5 +10,8 @@ public class PremiumSubscribeRequestDTO {
     private Integer months;
 
     @NotBlank
+    private String studentId; // User ID of the student
+
+    @NotBlank
     private String utr; // ⭐ IMPORTANT
 }

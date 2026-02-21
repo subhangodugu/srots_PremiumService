@@ -5,11 +5,13 @@ import { AdminPortal } from './pages/srots-user/AdminPortal';
 import { CPUserPortal } from './pages/cp-user/CPUserPortal';
 import { StudentPortal } from './pages/student/StudentPortal';
 import PremiumPage from './pages/student/PremiumPage';
+import PremiumRequired from './pages/student/PremiumRequired';
 import { Role, User } from './types';
 import {
   Mail, Lock, Loader2, Eye, EyeOff, ShieldCheck,
   UserCheck, GraduationCap, Terminal, Zap, ArrowLeft, Send, CheckCircle
 } from 'lucide-react';
+import PremiumPayment from './pages/student/PremiumPayment';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { login, logout, updateUser } from './store/slices/authSlice';
@@ -33,29 +35,48 @@ const App: React.FC = () => {
 
   // ────────────────────────────────────────────────
   // Force logout + redirect if token is missing on mount/refresh
-  // This prevents blank screen or stale protected pages
   // ────────────────────────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem('SROTS_AUTH_TOKEN');
+    const isOnHold = currentUser?.role === Role.STUDENT && currentUser?.accountStatus === 'HOLD';
 
-    // If no token but Redux thinks user is logged in → force logout
-    if (!token && currentUser) {
+    if (!token && !isOnHold && currentUser) {
       console.warn('No token found but user in Redux → forcing logout');
       dispatch(logout());
       navigate('/login', { replace: true });
     }
 
-    // If token exists but no user in Redux → try to restore (optional)
     if (token && !currentUser && !authLoading) {
       console.warn('Token exists but no user in Redux → redirect to login to re-auth');
       navigate('/login', { replace: true });
     }
   }, [currentUser, authLoading, dispatch, navigate]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) return;
-    dispatch(login({ username, password }) as any);
+
+    try {
+      const response: any = await dispatch(login({ username, password }) as any).unwrap();
+
+      if (response.accountStatus === "RESTRICTED") {
+        alert("Your account is restricted. Contact admin.");
+        dispatch(logout());
+        return;
+      }
+
+      if (response.role === Role.STUDENT) {
+        if (!response.premiumActive) {
+          navigate("/premium-payment");
+        } else {
+          navigate("/student-dashboard");
+        }
+      } else {
+        navigate(getDefaultDashboard(response));
+      }
+    } catch (err: any) {
+      // Error handled by Redux slice
+    }
   };
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
@@ -85,14 +106,13 @@ const App: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  // Default dashboard per role
-  const getDefaultDashboard = (role: Role) => {
-    switch (role) {
+  const getDefaultDashboard = (user: User) => {
+    switch (user.role) {
       case Role.ADMIN:
       case Role.SROTS_DEV:
         return '/admin/profile';
       case Role.STUDENT:
-        return '/student/jobs';
+        return user.accountStatus === 'HOLD' ? '/premium-payment' : '/student/jobs';
       case Role.CPH:
       case Role.STAFF:
         return '/cp/jobs';
@@ -101,28 +121,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Protected Route: checks BOTH user in Redux AND token in storage
-  const ProtectedRoute = ({ children, allowedRoles }: { children: JSX.Element; allowedRoles?: Role[] }) => {
-    const token = localStorage.getItem('SROTS_AUTH_TOKEN');
-
-    if (!currentUser || !token) {
-      return <Navigate to="/login" replace />;
-    }
-
-    if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-      return <Navigate to="/unauthorized" replace />;
-    }
-
-    // 🚀 PREMIUM GUARD: Redirect students on HOLD to /premium
-    if (currentUser.role === Role.STUDENT && currentUser.accountStatus === 'HOLD' && !location.pathname.startsWith('/premium')) {
-      return <Navigate to="/premium" replace />;
-    }
-
-    return children;
-  };
-
   // ────────────────────────────────────────────────
-  // If no user → ALWAYS show login UI (prevents blank screen)
+  // Login UI for unauthenticated users
   // ────────────────────────────────────────────────
   if (!currentUser) {
     return (
@@ -198,42 +198,30 @@ const App: React.FC = () => {
           </div>
 
           <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-5 gap-3">
-            <button onClick={() => quickLogin('srots_admin', 'Srots_admin@8847')} className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-lg border border-blue-500 flex flex-col items-center gap-2 transition-all active:scale-95">
-              <ShieldCheck size={24} />
-              <span className="text-[10px] font-black uppercase whitespace-nowrap">Super Admin</span>
-            </button>
-
-            <button onClick={() => quickLogin('DEV_Praveen', 'DEV_PRAVEEN@8847')} className="bg-slate-800 hover:bg-slate-900 text-white p-4 rounded-2xl shadow-lg border border-slate-700 flex flex-col items-center gap-2 transition-all active:scale-95">
-              <Terminal size={24} />
-              <span className="text-[10px] font-black uppercase whitespace-nowrap">Srots Dev</span>
-            </button>
-
-            <button onClick={() => quickLogin('SRM_CPADMIN_rajesh_tpo', 'SRM_CPADMIN_rajesh_tpo@5678')} className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-2xl shadow-lg border border-purple-500 flex flex-col items-center gap-2 transition-all active:scale-95">
-              <UserCheck size={24} />
-              <span className="text-[10px] font-black uppercase whitespace-nowrap">College Head</span>
-            </button>
-
-            <button onClick={() => quickLogin('SRM_CPSTAFF_kiran', 'SRM_CPSTAFF_KIRAN@3322')} className="bg-indigo-500 hover:bg-indigo-600 text-white p-4 rounded-2xl shadow-lg border border-indigo-400 flex flex-col items-center gap-2 transition-all active:scale-95">
-              <Zap size={24} />
-              <span className="text-[10px] font-black uppercase whitespace-nowrap">Staff</span>
-            </button>
-
-            <button onClick={() => quickLogin('SRM_21701A0501', 'SRM_21701A0501_9012')} className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl shadow-lg border border-green-500 flex flex-col items-center gap-2 transition-all active:scale-95">
-              <GraduationCap size={24} />
-              <span className="text-[10px] font-black uppercase whitespace-nowrap">Student</span>
-            </button>
+            {[
+              { label: 'Super Admin', u: 'srots_admin', p: 'Srots_admin@8847', color: 'bg-blue-600', icon: ShieldCheck },
+              { label: 'Srots Dev', u: 'DEV_Praveen', p: 'DEV_PRAVEEN@8847', color: 'bg-slate-800', icon: Terminal },
+              { label: 'College Head', u: 'SRM_CPADMIN_rajesh_tpo', p: 'SRM_CPADMIN_rajesh_tpo@5678', color: 'bg-purple-600', icon: UserCheck },
+              { label: 'Staff', u: 'SRM_CPSTAFF_kiran', p: 'SRM_CPSTAFF_KIRAN@3322', color: 'bg-indigo-500', icon: Zap },
+              { label: 'Student', u: 'SRM_21701A0501', p: 'SRM_21701A0501_9012', color: 'bg-green-600', icon: GraduationCap }
+            ].map((acc) => (
+              <button key={acc.u} onClick={() => quickLogin(acc.u, acc.p)} className={`${acc.color} hover:opacity-90 text-white p-4 rounded-2xl shadow-lg border border-white/10 flex flex-col items-center gap-2 transition-all active:scale-95`}>
+                <acc.icon size={24} />
+                <span className="text-[10px] font-black uppercase whitespace-nowrap">{acc.label}</span>
+              </button>
+            ))}
           </div>
 
           <Modal isOpen={showForgotModal} onClose={() => setShowForgotModal(false)} title="Account Recovery" maxWidth="max-w-sm">
             <div className="p-8">
               {forgotSuccess ? (
-                <div className="text-center space-y-4 animate-in zoom-in duration-300">
+                <div className="text-center space-y-4">
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle size={32} />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900">Link Sent!</h3>
                   <p className="text-sm text-gray-500 leading-relaxed">
-                    We've sent a password reset link to <span className="font-bold text-gray-800">{forgotEmail}</span>. Please check your inbox.
+                    We've sent a password reset link to <span className="font-bold text-gray-800">{forgotEmail}</span>.
                   </p>
                   <button onClick={() => setShowForgotModal(false)} className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
                     Back to Login
@@ -259,19 +247,11 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <button
-                      type="submit"
-                      disabled={isForgotSubmitting}
-                      className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                    >
+                    <button type="submit" disabled={isForgotSubmitting} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 flex items-center justify-center gap-2">
                       {isForgotSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                       Send Reset Link
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotModal(false)}
-                      className="w-full py-3 bg-white text-gray-500 font-bold hover:text-gray-700 flex items-center justify-center gap-1 text-sm"
-                    >
+                    <button type="button" onClick={() => setShowForgotModal(false)} className="w-full py-3 bg-white text-gray-500 font-bold hover:text-gray-700 flex items-center justify-center gap-1 text-sm">
                       <ArrowLeft size={16} /> Back to Login
                     </button>
                   </div>
@@ -285,130 +265,131 @@ const App: React.FC = () => {
   }
 
   // ────────────────────────────────────────────────
-  // Logged-in user → protected routes
+  // Main Routing UI for authenticated users
   // ────────────────────────────────────────────────
   return (
     <ErrorBoundary>
       <Routes>
-        {/* Root → go to dashboard */}
-        <Route path="/" element={<Navigate to={getDefaultDashboard(currentUser.role)} replace />} />
+        <Route path="/" element={<Navigate to={getDefaultDashboard(currentUser!)} replace />} />
+        <Route path="/login" element={<Navigate to={getDefaultDashboard(currentUser!)} replace />} />
 
-        {/* Login → redirect to dashboard if logged in */}
-        <Route path="/login" element={<Navigate to={getDefaultDashboard(currentUser.role)} replace />} />
-
-        {/* Admin / SROTS_DEV */}
+        {/* Admin Portal */}
         <Route path="/admin/*" element={
           <ProtectedRoute allowedRoles={[Role.ADMIN, Role.SROTS_DEV]}>
             <Layout
-              user={currentUser}
+              user={currentUser!}
               onNavigate={(view) => navigate(`/admin/${view}`)}
               currentView={location.pathname.split('/').pop() || 'profile'}
               onLogout={handleLogout}
             >
               <AdminPortal
                 view={location.pathname.split('/').pop() || 'profile'}
-                user={currentUser}
-                onUpdateUser={(u) => dispatch(updateUser(u))}
+                user={currentUser!}
+                onUpdateUser={(u: any) => dispatch(updateUser(u))}
               />
             </Layout>
           </ProtectedRoute>
         } />
 
-        {/* Student */}
-        {/* <Route path="/student/*" element={
-          <ProtectedRoute allowedRoles={[Role.STUDENT]}>
-            <Layout 
-              user={currentUser} 
-              onNavigate={(view) => navigate(`/student/${view}`)} 
-              currentView={location.pathname.split('/').pop() || 'jobs'}
-              onLogout={handleLogout}
-            >
-              <StudentPortal 
-                view={location.pathname.split('/').pop() || 'jobs'} 
-                student={currentUser as any} 
-                onUpdateUser={(u) => dispatch(updateUser(u))} 
-              />
-            </Layout>
-          </ProtectedRoute>
-        } /> */}
-
-        {/* CP / Staff */}
-        {/* <Route path="/cp/*" element={
-          <ProtectedRoute allowedRoles={[Role.CPH, Role.STAFF]}>
-            <Layout 
-              user={currentUser} 
-              onNavigate={(view) => navigate(`/cp/${view}`)} 
-              currentView={location.pathname.split('/').pop() || 'jobs'}
-              onLogout={handleLogout}
-            >
-              <CPUserPortal 
-                view={location.pathname.split('/').pop() || 'jobs'} 
-                user={currentUser} 
-                onUpdateUser={(u) => dispatch(updateUser(u))} 
-              />
-            </Layout>
-          </ProtectedRoute>
-        } /> */}
-
+        {/* CP Portal */}
         <Route path="/cp/*" element={
           <ProtectedRoute allowedRoles={[Role.CPH, Role.STAFF]}>
             <Layout
-              user={currentUser}
-              onNavigate={(view) => {
-                const prefix = 'cp';
-                navigate(`/${prefix}/${view}`);
-              }}
+              user={currentUser!}
+              onNavigate={(view) => navigate(`/cp/${view}`)}
               currentView={location.pathname.split('/').pop() || 'jobs'}
               onLogout={handleLogout}
             >
               <CPUserPortal
                 view={location.pathname.split('/').pop() || 'jobs'}
-                user={currentUser}
-                onUpdateUser={(u) => dispatch(updateUser(u))}
+                user={currentUser!}
+                onUpdateUser={(u: any) => dispatch(updateUser(u))}
               />
             </Layout>
           </ProtectedRoute>
         } />
 
+        {/* Student Portal */}
         <Route path="/student/*" element={
           <ProtectedRoute allowedRoles={[Role.STUDENT]}>
             <Layout
-              user={currentUser}
-              onNavigate={(view) => {
-                const prefix = 'student';
-                navigate(`/${prefix}/${view}`);
-              }}
+              user={currentUser!}
+              onNavigate={(view) => navigate(`/student/${view}`)}
               currentView={location.pathname.split('/').pop() || 'jobs'}
               onLogout={handleLogout}
             >
               <StudentPortal
                 view={location.pathname.split('/').pop() || 'jobs'}
-                student={currentUser as any}
+                student={currentUser! as any}
                 onUpdateUser={(u) => dispatch(updateUser(u))}
               />
             </Layout>
           </ProtectedRoute>
         } />
 
-        {/* Premium Page */}
+        {/* Specialized Redirects */}
+        <Route path="/student-dashboard" element={<Navigate to="/student/jobs" replace />} />
+
+        <Route path="/premium-payment" element={
+          <ProtectedRoute allowedRoles={[Role.STUDENT]}>
+            <PremiumPayment />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/premium-required" element={<Navigate to="/premium-payment" replace />} />
+
         <Route path="/premium" element={
           <ProtectedRoute allowedRoles={[Role.STUDENT]}>
             <PremiumPage />
           </ProtectedRoute>
         } />
 
-        {/* // For About College dynamic title: in AboutCollegeComponent, change h2:
-        <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-          About {college.name} {isCPH && <Sparkles className="text-amber-400" size={24} />}
-        </h2> */}
-
-
-
-        <Route path="/unauthorized" element={<div className="min-h-screen flex items-center justify-center text-2xl font-bold text-red-600">Access Denied</div>} />
-        <Route path="*" element={<Navigate to={getDefaultDashboard(currentUser.role)} replace />} />
+        <Route path="/unauthorized" element={<div className="min-h-screen flex items-center justify-center text-2xl font-bold text-red-600 uppercase tracking-tighter">Access Denied</div>} />
+        <Route path="*" element={<Navigate to={getDefaultDashboard(currentUser!)} replace />} />
       </Routes>
     </ErrorBoundary>
   );
+};
+
+// ────────────────────────────────────────────────
+// Protected Route Guard
+// ────────────────────────────────────────────────
+const ProtectedRoute: React.FC<{ children: JSX.Element; allowedRoles?: Role[] }> = ({ children, allowedRoles }) => {
+  const { user: currentUser } = useAppSelector(state => state.auth);
+  const location = useLocation();
+
+  const token = localStorage.getItem('SROTS_AUTH_TOKEN');
+  const accountStatus = localStorage.getItem('SROTS_ACCOUNT_STATUS') || currentUser?.accountStatus;
+  const isOnHold = accountStatus === 'HOLD';
+
+  const isAccessingPremium = ['/premium-payment', '/premium-required', '/premium'].includes(location.pathname);
+
+  // If no user AND NOT on hold (HOLD users might have session but limited access)
+  if (!currentUser && !isOnHold) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // allow HOLD to see QR page even without token (since HOLD users might be restored without token)
+  if (!token && isOnHold && isAccessingPremium) {
+    return children;
+  }
+
+  // block others if no token
+  if (!token && !isOnHold) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // role check
+  if (allowedRoles && !allowedRoles.includes(currentUser?.role as any)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  // PREMIUM GUARD: Redirect students on HOLD to payment if they try to access other pages
+  if (isOnHold && !isAccessingPremium) {
+    return <Navigate to="/premium-payment" replace />;
+  }
+
+  return children;
 };
 
 export default App;

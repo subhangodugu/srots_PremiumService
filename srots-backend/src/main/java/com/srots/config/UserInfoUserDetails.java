@@ -34,6 +34,10 @@ public class UserInfoUserDetails implements UserDetails {
                 .println("Login Debug: User=" + username + " | Role=" + roleWithPrefix + " | isHead=" + isCollegeHead);
     }
 
+    public boolean isRestricted() {
+        return isRestricted;
+    }
+
     // This allows @PreAuthorize("principal.isCollegeHead") to work
     public boolean isCollegeHead() {
         return isCollegeHead;
@@ -75,7 +79,8 @@ public class UserInfoUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return !isRestricted;
+        return true; // We handle locking/HOLD logic manually in AuthController to provide custom
+                     // responses
     }
 
     @Override

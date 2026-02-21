@@ -435,7 +435,10 @@ export interface User {
   fullName: string;
   role: Role;
   collegeId?: string | null;
-  accountStatus?: string; // ADDED
+  accountStatus?: string;
+  premiumActive?: boolean; // ADDED
+  premiumExpiryDate?: string; // ADDED
+  message?: string;
   token?: string;
   avatar?: string;
   createdAt?: string;

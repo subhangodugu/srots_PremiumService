@@ -66,11 +66,18 @@ export const GlobalStudentDirectory: React.FC<GlobalStudentDirectoryProps> = ({
         setShowAddStudent(true);
     };
 
-    const handleSaveStudent = async (student: Student) => {
-        if (isEditingStudent) await StudentService.updateStudentProfile(student.id, student.profile);
-        else await StudentService.createStudent(student);
-        refreshData();
-        setShowAddStudent(false);
+    const handleSaveStudent = async (studentPayload: any) => {
+        try {
+            if (isEditingStudent && editingStudent) {
+                await StudentService.adminUpdateStudent(editingStudent.id, studentPayload);
+            } else {
+                await StudentService.createStudent(studentPayload);
+            }
+            refreshData();
+            setShowAddStudent(false);
+        } catch (err: any) {
+            alert(err.response?.data?.message || err.message || 'Failed to save student');
+        }
     };
 
     const requestDeleteStudent = (e: React.MouseEvent, id: string) => {
@@ -90,8 +97,12 @@ export const GlobalStudentDirectory: React.FC<GlobalStudentDirectoryProps> = ({
         e.stopPropagation(); e.preventDefault();
         const student = studentsList.find(s => s.id === id);
         if (student) {
-            await StudentService.updateStudentProfile(student.id, { ...student.profile, isRestricted: !student.isRestricted });
-            refreshData();
+            try {
+                await StudentService.toggleStudentRestriction(id, !student.isRestricted);
+                refreshData();
+            } catch (err: any) {
+                alert(err.message || 'Failed to toggle restriction');
+            }
         }
     };
 

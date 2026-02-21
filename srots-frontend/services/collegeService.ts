@@ -535,19 +535,19 @@ export const CollegeService = {
 
   // 1. Add Branch
   addCollegeBranch: async (collegeId: string, branch: BranchDTO): Promise<College> => {
-    const response = await api.post(`/api/v1/colleges/${collegeId}/branches`, branch);
+    const response = await api.post(`/colleges/${collegeId}/branches`, branch);
     return response.data;
   },
 
   // 2. Update Branch (Targeted by code)
   updateCollegeBranch: async (collegeId: string, branchCode: string, branch: BranchDTO): Promise<College> => {
-    const response = await api.put(`/api/v1/colleges/${collegeId}/branches/${branchCode}`, branch);
+    const response = await api.put(`/colleges/${collegeId}/branches/${branchCode}`, branch);
     return response.data;
   },
 
   // 3. Delete Branch
   removeCollegeBranch: async (collegeId: string, branchCode: string): Promise<College> => {
-    const response = await api.delete(`/api/v1/colleges/${collegeId}/branches/${branchCode}`);
+    const response = await api.delete(`/colleges/${collegeId}/branches/${branchCode}`);
     return response.data;
   }
 

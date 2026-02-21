@@ -1,0 +1,1 @@
+﻿components/colleges/student-portal/jobs/details/JobEligibleTab.tsx(106,55): error TS18048: 'job.applicants' is possibly 'undefined'.

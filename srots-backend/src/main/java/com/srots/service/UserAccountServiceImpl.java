@@ -29,11 +29,13 @@ import com.srots.dto.UserFullProfileResponse;
 import com.srots.exception.PasswordValidationException;
 import com.srots.model.College;
 import com.srots.model.EducationRecord;
+import com.srots.model.Student;
 import com.srots.model.StudentProfile;
 import com.srots.model.User;
 import com.srots.repository.ApplicationRepository;
 import com.srots.repository.CollegeRepository;
 import com.srots.repository.EducationRecordRepository;
+import com.srots.repository.StudentRepository;
 import com.srots.repository.StudentCertificationRepository;
 import com.srots.repository.StudentExperienceRepository;
 import com.srots.repository.StudentLanguageRepository;
@@ -53,6 +55,9 @@ public class UserAccountServiceImpl implements UserAccountService {
 
 	@Autowired
 	private CollegeRepository collegeRepository;
+
+	@Autowired
+	private StudentRepository studentRepository;
 
 	@Autowired
 	private StudentProfileRepository studentProfileRepository;
@@ -178,6 +183,22 @@ public class UserAccountServiceImpl implements UserAccountService {
 		}
 
 		User savedUser = userRepository.save(user);
+
+		// 🔥 CREATE STUDENT PROFILE
+		if (role == User.Role.STUDENT) {
+			Student sEntity = new Student();
+			sEntity.setId(savedUser.getId());
+			sEntity.setUser(savedUser);
+			sEntity.setName(savedUser.getFullName());
+			sEntity.setEmail(savedUser.getEmail());
+			sEntity.setAccountStatus("ACTIVE");
+			sEntity.setPremiumActive(false);
+			sEntity.setCreatedAt(java.time.LocalDateTime.now());
+			if (savedUser.getCollege() != null) {
+				sEntity.setCollegeId(savedUser.getCollege().getId());
+			}
+			studentRepository.save(sEntity);
+		}
 
 		if (role == User.Role.STUDENT && dto.getStudentProfile() != null) {
 			saveEducationHistory(savedUser, dto.getStudentProfile());
@@ -322,6 +343,35 @@ public class UserAccountServiceImpl implements UserAccountService {
 		profile.setInstituteEmail(spDto.getInstituteEmail());
 		profile.setPersonalEmail(spDto.getPersonalEmail());
 		profile.setWhatsappNumber(spDto.getWhatsappNumber());
+
+		// LinkedIn and Professional
+		if (spDto.getLinkedInProfile() != null) {
+			profile.setLinkedinProfile(spDto.getLinkedInProfile());
+		}
+		profile.setCareerPath(spDto.getCareerPath());
+		profile.setDrivingLicense(spDto.getDrivingLicense());
+		profile.setPreferredContactMethod(StudentProfile.ContactMethod.fromString(spDto.getPreferredContactMethod()));
+
+		// Passport Details
+		profile.setPassportNumber(spDto.getPassportNumber());
+		if (spDto.getPassportIssueDate() != null) {
+			try {
+				profile.setPassportIssueDate(LocalDate.parse(spDto.getPassportIssueDate()));
+			} catch (Exception e) {
+			}
+		}
+		if (spDto.getPassportExpiryDate() != null) {
+			try {
+				profile.setPassportExpiryDate(LocalDate.parse(spDto.getPassportExpiryDate()));
+			} catch (Exception e) {
+			}
+		}
+
+		// Gaps & Other
+		profile.setDayScholar(spDto.getDayScholar() != null ? spDto.getDayScholar() : false);
+		profile.setGapInStudies(spDto.getGapInStudies() != null ? spDto.getGapInStudies() : false);
+		profile.setGapDuration(spDto.getGapDuration());
+		profile.setGapReason(spDto.getGapReason());
 
 		// Family Details
 		profile.setFatherName(spDto.getFatherName());
@@ -510,32 +560,34 @@ public class UserAccountServiceImpl implements UserAccountService {
 		}
 
 		switch (role) {
-		case ADMIN:
-			return "ADMIN_" + userPart;
+			case ADMIN:
+				return "ADMIN_" + userPart;
 
-		case SROTS_DEV:
-			return "DEV_" + userPart;
+			case SROTS_DEV:
+				return "DEV_" + userPart;
 
-		case CPH:
-//			String prefix = (dto.getIsCollegeHead() != null && dto.getIsCollegeHead()) ? "CPADMIN_" : "CPSTAFF_";
-			String cpadmin = "CPADMIN_";
-			// Example: SRM_CPSTAFF_5544
-			return college.getCode() + "_" + cpadmin + userPart;
-		case STAFF:
-//			String prefix = (dto.getIsCollegeHead() != null && dto.getIsCollegeHead()) ? "CPADMIN_" : "CPSTAFF_";
-			String cpstaff = "CPSTAFF_";
-			// Example: SRM_CPSTAFF_5544
-			return college.getCode() + "_" + cpstaff + userPart;
+			case CPH:
+				// String prefix = (dto.getIsCollegeHead() != null && dto.getIsCollegeHead()) ?
+				// "CPADMIN_" : "CPSTAFF_";
+				String cpadmin = "CPADMIN_";
+				// Example: SRM_CPSTAFF_5544
+				return college.getCode() + "_" + cpadmin + userPart;
+			case STAFF:
+				// String prefix = (dto.getIsCollegeHead() != null && dto.getIsCollegeHead()) ?
+				// "CPADMIN_" : "CPSTAFF_";
+				String cpstaff = "CPSTAFF_";
+				// Example: SRM_CPSTAFF_5544
+				return college.getCode() + "_" + cpstaff + userPart;
 
-		case STUDENT:
-			if (dto.getStudentProfile() == null || dto.getStudentProfile().getRollNumber() == null) {
-				throw new RuntimeException("Roll Number is required for Student username generation.");
-			}
-			// Students always use Roll Number as the unique identifier
-			return college.getCode() + "_" + dto.getStudentProfile().getRollNumber();
+			case STUDENT:
+				if (dto.getStudentProfile() == null || dto.getStudentProfile().getRollNumber() == null) {
+					throw new RuntimeException("Roll Number is required for Student username generation.");
+				}
+				// Students always use Roll Number as the unique identifier
+				return college.getCode() + "_" + dto.getStudentProfile().getRollNumber();
 
-		default:
-			return userPart;
+			default:
+				return userPart;
 		}
 	}
 
@@ -583,17 +635,15 @@ public class UserAccountServiceImpl implements UserAccountService {
 	public User getById(String id) {
 		return userRepository.findById(id).orElse(null);
 	}
-	
-	
 
 	// 5. GET FULL PROFILE (The "Deep Fetch" method)
 	public UserFullProfileResponse getFullUserProfile(String userId) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-		
+
 		// Explicitly initialize the proxy if you aren't using @JsonIgnore
-	    if (user.getCollege() != null) {
-	        user.getCollege().getId(); 
-	    }
+		if (user.getCollege() != null) {
+			user.getCollege().getId();
+		}
 
 		UserFullProfileResponse response = new UserFullProfileResponse();
 		response.setUser(user);
@@ -616,11 +666,11 @@ public class UserAccountServiceImpl implements UserAccountService {
 		if (user.getRole() != User.Role.STUDENT) {
 			throw new RuntimeException("Access Denied: Not a student account");
 		}
-		
+
 		// Explicitly initialize the proxy if you aren't using @JsonIgnore
-	    if (user.getCollege() != null) {
-	        user.getCollege().getId(); 
-	    }
+		if (user.getCollege() != null) {
+			user.getCollege().getId();
+		}
 
 		Student360Response dto = new Student360Response();
 
@@ -650,55 +700,60 @@ public class UserAccountServiceImpl implements UserAccountService {
 		user.setAvatarUrl(url);
 		userRepository.save(user);
 	}
-	
+
 	// Add this to your UserService Implementation
-	public List<User> getFilteredUsers(String collegeId, User.Role role, String branch, Integer batch, String gender, String search) {
-	    List<User> users;
+	public List<User> getFilteredUsers(String collegeId, User.Role role, String branch, Integer batch, String gender,
+			String search) {
+		List<User> users;
 
-	    // 1. Initial Fetch (Global vs College)
-	    if (collegeId != null && role != null) {
-	        users = userRepository.findByCollegeIdAndRole(collegeId, role);
-	    } else if (collegeId != null) {
-	        users = userRepository.findByCollegeId(collegeId);
-	    } else if (role != null) {
-	        users = userRepository.findByRole(role);
-	    } else {
-	        users = userRepository.findAll();
-	    }
+		// 1. Initial Fetch (Global vs College)
+		if (collegeId != null && role != null) {
+			users = userRepository.findByCollegeIdAndRole(collegeId, role);
+		} else if (collegeId != null) {
+			users = userRepository.findByCollegeId(collegeId);
+		} else if (role != null) {
+			users = userRepository.findByRole(role);
+		} else {
+			users = userRepository.findAll();
+		}
 
-	    // 2. Apply Dynamic Filters
-	    return users.stream()
-	        .filter(u -> (branch == null || branch.isBlank()) || 
-	                     (u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(branch.trim())))
-	        .filter(u -> {
-	            if (gender == null || gender.isBlank()) return true;
-	            return u.getStudentProfile() != null && u.getStudentProfile().getGender() != null && 
-	                   u.getStudentProfile().getGender().name().equalsIgnoreCase(gender.trim());
-	        })
-	        .filter(u -> (batch == null) || 
-	                     (u.getStudentProfile() != null && batch.equals(u.getStudentProfile().getBatch())))
-	        
-	        // --- UPDATED SEARCH FILTER (Name, Username, Email, Roll Number) ---
-	        .filter(u -> {
-	            if (search == null || search.isBlank()) return true;
-	            String lowerSearch = search.toLowerCase().trim();
-	            
-	            boolean matchesFullName = u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerSearch);
-	            boolean matchesUsername = u.getUsername() != null && u.getUsername().toLowerCase().contains(lowerSearch);
-	            boolean matchesEmail    = u.getEmail() != null && u.getEmail().toLowerCase().contains(lowerSearch);
-	            boolean matchesRoll     = (u.getStudentProfile() != null && u.getStudentProfile().getRollNumber() != null) && 
-	                                      u.getStudentProfile().getRollNumber().toLowerCase().contains(lowerSearch);
-	            
-	            return matchesFullName || matchesUsername || matchesEmail || matchesRoll;
-	        })
-	        .collect(Collectors.toList());
+		// 2. Apply Dynamic Filters
+		return users.stream()
+				.filter(u -> (branch == null || branch.isBlank()) ||
+						(u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(branch.trim())))
+				.filter(u -> {
+					if (gender == null || gender.isBlank())
+						return true;
+					return u.getStudentProfile() != null && u.getStudentProfile().getGender() != null &&
+							u.getStudentProfile().getGender().name().equalsIgnoreCase(gender.trim());
+				})
+				.filter(u -> (batch == null) ||
+						(u.getStudentProfile() != null && batch.equals(u.getStudentProfile().getBatch())))
+
+				// --- UPDATED SEARCH FILTER (Name, Username, Email, Roll Number) ---
+				.filter(u -> {
+					if (search == null || search.isBlank())
+						return true;
+					String lowerSearch = search.toLowerCase().trim();
+
+					boolean matchesFullName = u.getFullName() != null
+							&& u.getFullName().toLowerCase().contains(lowerSearch);
+					boolean matchesUsername = u.getUsername() != null
+							&& u.getUsername().toLowerCase().contains(lowerSearch);
+					boolean matchesEmail = u.getEmail() != null && u.getEmail().toLowerCase().contains(lowerSearch);
+					boolean matchesRoll = (u.getStudentProfile() != null
+							&& u.getStudentProfile().getRollNumber() != null) &&
+							u.getStudentProfile().getRollNumber().toLowerCase().contains(lowerSearch);
+
+					return matchesFullName || matchesUsername || matchesEmail || matchesRoll;
+				})
+				.collect(Collectors.toList());
 	}
 
 	// Missing Helper Method
 	public String getCollegeName(String collegeId) {
 		return collegeRepository.findById(collegeId).map(College::getName).orElse("College");
 	}
-	
 
 	@Override
 	public byte[] exportUsersByRole(String collegeId, User.Role role, String branch, Integer batch, String gender,
@@ -714,25 +769,30 @@ public class UserAccountServiceImpl implements UserAccountService {
 
 		// 2. Apply Dynamic Filters (Strict Version)
 		users = users.stream()
-		        .filter(u -> {
-		            if (branch == null || branch.isBlank()) return true;
-		            return u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(branch.trim());
-		        })
-		        .filter(u -> {
-		            // If the variable 'gender' is null, it means the URL key was wrong (e.g., 'Gender')
-		            // or not provided. 
-		            if (gender == null || gender.isBlank()) return true;
-		            
-		            if (u.getStudentProfile() == null || u.getStudentProfile().getGender() == null) return false;
-		            
-		            // This is where Arjun gets blocked if gender="FEMALE"
-		            return u.getStudentProfile().getGender().name().equalsIgnoreCase(gender.trim());
-		        })
-		        .filter(u -> {
-		            if (batch == null) return true;
-		            return u.getStudentProfile() != null && batch.equals(u.getStudentProfile().getBatch());
-		        })
-		        .collect(Collectors.toList());
+				.filter(u -> {
+					if (branch == null || branch.isBlank())
+						return true;
+					return u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(branch.trim());
+				})
+				.filter(u -> {
+					// If the variable 'gender' is null, it means the URL key was wrong (e.g.,
+					// 'Gender')
+					// or not provided.
+					if (gender == null || gender.isBlank())
+						return true;
+
+					if (u.getStudentProfile() == null || u.getStudentProfile().getGender() == null)
+						return false;
+
+					// This is where Arjun gets blocked if gender="FEMALE"
+					return u.getStudentProfile().getGender().name().equalsIgnoreCase(gender.trim());
+				})
+				.filter(u -> {
+					if (batch == null)
+						return true;
+					return u.getStudentProfile() != null && batch.equals(u.getStudentProfile().getBatch());
+				})
+				.collect(Collectors.toList());
 
 		// 3. Map to Report Rows
 		List<ReportRow> reportData = users.stream().map(user -> {
@@ -887,6 +947,54 @@ public class UserAccountServiceImpl implements UserAccountService {
 		public String getDept() {
 			return dept;
 		}
+	}
+
+	@Override
+	@Transactional
+	public void renewAccount(String userId, int months) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+		if (user.getRole() != User.Role.STUDENT) {
+			throw new RuntimeException("Only student accounts can be renewed");
+		}
+
+		Student student = studentRepository.findByUserId(userId)
+				.orElseThrow(() -> new RuntimeException("Student profile not found for user: " + userId));
+
+		LocalDate currentExpiry = student.getPremiumExpiryDate();
+		if (currentExpiry == null || currentExpiry.isBefore(LocalDate.now())) {
+			currentExpiry = LocalDate.now();
+		}
+
+		student.setPremiumExpiryDate(currentExpiry.plusMonths(months));
+		student.setPremiumActive(true);
+		student.setAccountStatus("ACTIVE");
+
+		studentRepository.save(student);
+		userRepository.save(user);
+	}
+
+	@Override
+	@Transactional
+	public void bulkRenewAccounts(List<Map<String, Object>> updates) {
+		for (Map<String, Object> update : updates) {
+			String id = (String) update.get("id");
+			Integer months = (Integer) update.get("months");
+			if (id != null && months != null) {
+				renewAccount(id, months);
+			}
+		}
+	}
+
+	@Override
+	@Transactional
+	public void toggleRestriction(String userId, boolean restrict) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+		user.setIsRestricted(restrict);
+		userRepository.save(user);
 	}
 
 	// --- Helper Email Methods ---

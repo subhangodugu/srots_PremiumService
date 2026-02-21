@@ -83,13 +83,17 @@ export const ManagingStudentAccounts: React.FC<ManagingStudentAccountsProps> = (
         setShowExtensionModal(true);
     };
 
-    const confirmExtension = () => {
+    const confirmExtension = async () => {
         if (extensionTarget) {
-            StudentService.renewStudent(extensionTarget.id, parseInt(extensionMonths));
-            alert(`Extended validity for ${extensionTarget.name} by ${extensionMonths} months.`);
-            setShowExtensionModal(false);
-            setExtensionTarget(null);
-            refreshList();
+            try {
+                await StudentService.renewStudent(extensionTarget.id, parseInt(extensionMonths));
+                alert(`Extended validity for ${extensionTarget.name} by ${extensionMonths} months.`);
+                setShowExtensionModal(false);
+                setExtensionTarget(null);
+                refreshList();
+            } catch (err: any) {
+                alert(err.message || 'Failed to renew account');
+            }
         }
     };
 
@@ -97,11 +101,15 @@ export const ManagingStudentAccounts: React.FC<ManagingStudentAccountsProps> = (
         setDeleteId(id);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (deleteId) {
-            StudentService.deleteStudent(deleteId);
-            refreshList();
-            setDeleteId(null);
+            try {
+                await StudentService.deleteStudent(deleteId);
+                refreshList();
+                setDeleteId(null);
+            } catch (err: any) {
+                alert(err.message || 'Failed to delete account');
+            }
         }
     };
 

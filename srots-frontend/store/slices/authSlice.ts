@@ -43,6 +43,7 @@ const authSlice = createSlice({
 
       // Save both token and user session
       localStorage.setItem('SROTS_USER_SESSION', JSON.stringify(action.payload));
+      localStorage.setItem('SROTS_ACCOUNT_STATUS', action.payload.accountStatus || 'ACTIVE');
       // Assuming AuthService.authenticateUser already saved the token
     },
     loginFailure: (state, action: PayloadAction<string>) => {
@@ -59,6 +60,7 @@ const authSlice = createSlice({
       // Clean ALL auth data
       localStorage.removeItem('SROTS_AUTH_TOKEN');
       localStorage.removeItem('SROTS_USER_SESSION');
+      localStorage.removeItem('SROTS_ACCOUNT_STATUS');
 
       // Force navigation to login
       window.location.hash = '';
@@ -81,7 +83,12 @@ export const login = (credentials: { username: string; password?: string }) => a
     dispatch(loginSuccess(user));
   } catch (err: any) {
     console.error('Authentication Error:', err);
-    const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';
+    // Robust error message extraction
+    const errorData = err.response?.data;
+    const errorMessage = typeof errorData === 'string'
+      ? errorData
+      : (errorData?.message || 'Login failed. Please check your credentials.');
+
     dispatch(loginFailure(errorMessage));
   }
 };

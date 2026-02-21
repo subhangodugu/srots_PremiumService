@@ -31,6 +31,18 @@ public class StudentProfileRequest {
 	private String instituteEmail;
 	private String whatsappNumber;
 
+	private String linkedInProfile;
+	private String drivingLicense;
+	private String passportNumber;
+	private String passportIssueDate; // String for LocalDate
+	private String passportExpiryDate; // String for LocalDate
+	private Boolean dayScholar;
+	private Boolean gapInStudies;
+	private String gapDuration;
+	private String gapReason;
+	private String preferredContactMethod;
+	private String careerPath;
+
 	// Parents
 	private String fatherName;
 	private String motherName;

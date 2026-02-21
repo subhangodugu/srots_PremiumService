@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -72,9 +73,21 @@ public class StudentProfile {
 	private ContactMethod preferredContactMethod;
 
 	public enum ContactMethod {
-		Phone, Email, WhatsApp
+		Phone, Email, WhatsApp;
+
+		public static ContactMethod fromString(String text) {
+			if (text == null || text.isBlank())
+				return null;
+			for (ContactMethod m : ContactMethod.values()) {
+				if (m.name().equalsIgnoreCase(text.trim())) {
+					return m;
+				}
+			}
+			return null;
+		}
 	}
 
+	@JsonProperty("linkedInProfile")
 	private String linkedinProfile;
 	private String fatherName;
 	private String fatherOccupation;

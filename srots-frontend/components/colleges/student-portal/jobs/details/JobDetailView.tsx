@@ -72,7 +72,7 @@
 //                                 </div>
 //                             </div>
 //                         </div>
-                        
+
 //                         <div className="flex flex-row md:flex-col items-center md:items-end gap-2 w-full md:w-auto justify-between md:justify-start mt-2 md:mt-0">
 //                             <div className={`px-4 py-1.5 rounded-full text-sm font-bold border ${isApplied ? 'bg-green-100 text-green-700 border-green-200' : !isEligible ? 'bg-red-50 text-red-700 border-red-200' : isExpired ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
 //                                 {isApplied ? (
@@ -166,7 +166,7 @@
 //                                     <span className="block text-xs font-bold text-gray-400 uppercase mb-1">Last Date to Apply</span>
 //                                     <span className={`font-bold text-lg ${isExpired ? 'text-red-600' : 'text-gray-900'}`}>{job.applicationDeadline}</span>
 //                                 </div>
-                                
+
 //                                 <div className="w-full md:w-auto">
 //                                     {isExpired ? (
 //                                         <div className="px-8 py-3 bg-gray-200 text-gray-500 font-bold rounded-lg flex items-center justify-center gap-2 cursor-not-allowed w-full md:w-auto">
@@ -181,7 +181,7 @@
 //                                             <button onClick={() => onNotInterested(job.id)} className="w-full md:w-auto flex-1 px-5 py-3 bg-white border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-100 transition-colors">
 //                                                 Not Interested
 //                                             </button>
-                                            
+
 //                                             {job.externalLink ? (
 //                                                 <a 
 //                                                     href={job.externalLink} 
@@ -213,9 +213,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Job, Student, StudentJobView } from '../../../../../types';
-import { 
-    ArrowLeft, Building, 
-    CheckCircle, MapPin, Briefcase, Ban, Lock, AlertTriangle, ExternalLink, Calendar as CalendarIcon, FileText, List, Loader2 
+import {
+    ArrowLeft, Building,
+    CheckCircle, MapPin, Briefcase, Ban, Lock, AlertTriangle, ExternalLink, Calendar as CalendarIcon, FileText, List, Loader2,
+    Shield
 } from 'lucide-react';
 import { JobService } from '../../../../../services/jobService';
 import { JobOverviewTab } from '../../../cp-portal/jobs/details/JobOverviewTab';
@@ -239,14 +240,14 @@ interface JobDetailViewProps {
     onNotInterested: (id: string) => void;
 }
 
-export const JobDetailView: React.FC<JobDetailViewProps> = ({ 
+export const JobDetailView: React.FC<JobDetailViewProps> = ({
     job, student, viewData, onBack, onApply, onNotInterested
 }) => {
     const [loading, setLoading] = useState(false);
 
     // CRITICAL: Use viewData that was passed from parent
     const { isApplied, isEligible, eligibilityReason, isExpired, isNotInterested } = viewData;
-    
+
     if (!job) {
         return (
             <div className="p-12 text-center text-gray-500 animate-in fade-in">
@@ -261,7 +262,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
     const companyName = job.companyName || job.company || 'Unknown Company';
     const jobType = job.jobType || job.type || 'Full-Time';
     const workMode = job.workMode || job.workArrangement || 'On-site';
-    
+
     // Parse JSON fields for display
     const responsibilities = (() => {
         try {
@@ -274,7 +275,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
             return [];
         }
     })();
-    
+
     const qualifications = (() => {
         try {
             if (Array.isArray(job.qualificationsJson)) return job.qualificationsJson;
@@ -286,7 +287,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
             return [];
         }
     })();
-    
+
     const preferredQualifications = (() => {
         try {
             if (Array.isArray(job.preferredQualificationsJson)) return job.preferredQualificationsJson;
@@ -298,7 +299,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
             return [];
         }
     })();
-    
+
     const benefits = (() => {
         try {
             if (Array.isArray(job.benefitsJson)) return job.benefitsJson;
@@ -310,7 +311,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
             return [];
         }
     })();
-    
+
     const rounds = (() => {
         try {
             if (Array.isArray(job.rounds)) return job.rounds;
@@ -322,7 +323,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
             return [];
         }
     })();
-    
+
     const documents = (() => {
         try {
             if (Array.isArray(job.documents)) return job.documents;
@@ -354,33 +355,32 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{job.title || 'Job Title'}</h1>
                                 <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600">
-                                    <span className="font-bold flex items-center gap-1"><Building size={14} className="md:w-4 md:h-4"/> {companyName}</span>
+                                    <span className="font-bold flex items-center gap-1"><Building size={14} className="md:w-4 md:h-4" /> {companyName}</span>
                                     <span className="hidden md:inline text-gray-300">|</span>
-                                    <span className="flex items-center gap-1"><MapPin size={14} className="md:w-4 md:h-4"/> {job.location || 'Location TBA'}</span>
+                                    <span className="flex items-center gap-1"><MapPin size={14} className="md:w-4 md:h-4" /> {job.location || 'Location TBA'}</span>
                                     <span className="hidden md:inline text-gray-300">|</span>
-                                    <span className="flex items-center gap-1"><Briefcase size={14} className="md:w-4 md:h-4"/> {jobType}</span>
+                                    <span className="flex items-center gap-1"><Briefcase size={14} className="md:w-4 md:h-4" /> {jobType}</span>
                                     <span className="hidden md:inline text-gray-300">|</span>
                                     <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full">{workMode}</span>
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* CRITICAL FIX: Status badge properly synced with viewData */}
                         <div className="flex flex-row md:flex-col items-center md:items-end gap-2 w-full md:w-auto justify-between md:justify-start mt-2 md:mt-0">
-                            <div className={`px-4 py-1.5 rounded-full text-sm font-bold border ${
-                                isApplied ? 'bg-green-100 text-green-700 border-green-200' : 
-                                !isEligible ? 'bg-red-50 text-red-700 border-red-200' : 
-                                isExpired ? 'bg-gray-100 text-gray-500 border-gray-200' : 
-                                'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
+                            <div className={`px-4 py-1.5 rounded-full text-sm font-bold border ${isApplied ? 'bg-green-100 text-green-700 border-green-200' :
+                                    !isEligible ? 'bg-red-50 text-red-700 border-red-200' :
+                                        isExpired ? 'bg-gray-100 text-gray-500 border-gray-200' :
+                                            'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}>
                                 {isApplied ? (
-                                    <span className="flex items-center gap-1"><CheckCircle size={16}/> Applied</span>
+                                    <span className="flex items-center gap-1"><CheckCircle size={16} /> Applied</span>
                                 ) : !isEligible ? (
-                                    <span className="flex items-center gap-1"><Ban size={16}/> Not Eligible</span>
+                                    <span className="flex items-center gap-1"><Ban size={16} /> Not Eligible</span>
                                 ) : isExpired ? (
-                                    <span className="flex items-center gap-1"><Lock size={16}/> Closed</span>
+                                    <span className="flex items-center gap-1"><Lock size={16} /> Closed</span>
                                 ) : (
-                                    <span className="flex items-center gap-1"><CheckCircle size={16}/> Open</span>
+                                    <span className="flex items-center gap-1"><CheckCircle size={16} /> Open</span>
                                 )}
                             </div>
                             <span className="text-xs text-gray-500 font-medium">Posted: {job.postedAt || 'N/A'}</span>
@@ -495,14 +495,14 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
                     {/* Selection Process */}
                     {rounds.length > 0 && (
                         <div className="mb-8 pb-8 border-b bg-white p-6 rounded-2xl border shadow-sm">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><List size={18} className="text-blue-600"/> Selection Process</h3>
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><List size={18} className="text-blue-600" /> Selection Process</h3>
                             <div className="space-y-3">
                                 {rounds.map((round: any, idx: number) => (
                                     <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                         <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">{idx + 1}</span>
                                         <div>
                                             <p className="font-bold text-gray-800 text-sm">{round.name}</p>
-                                            <p className="text-xs text-gray-500 flex items-center gap-1"><CalendarIcon size={10}/> {round.date}</p>
+                                            <p className="text-xs text-gray-500 flex items-center gap-1"><CalendarIcon size={10} /> {round.date}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -517,7 +517,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
                             <div className="flex flex-wrap gap-3">
                                 {documents.map((doc: any, i: number) => (
                                     <a key={i} href={doc.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 text-blue-700 font-bold text-xs transition-colors shadow-sm w-full md:w-auto justify-center md:justify-start">
-                                        <FileText size={16}/> {doc.name}
+                                        <FileText size={16} /> {doc.name}
                                     </a>
                                 ))}
                             </div>
@@ -530,7 +530,7 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
                             <div className="flex flex-col md:flex-row justify-between items-center gap-6 animate-in fade-in">
                                 <div className="text-green-800">
                                     <div className="flex items-center gap-2 font-bold text-xl">
-                                        <CheckCircle size={24}/> Application Submitted
+                                        <CheckCircle size={24} /> Application Submitted
                                     </div>
                                     <p className="text-sm opacity-80 mt-1">You have successfully applied for this position. Track your status in the App Status tab.</p>
                                 </div>
@@ -540,24 +540,24 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
                             </div>
                         ) : !isEligible ? (
                             <div className="flex flex-col gap-4 animate-in fade-in">
-                                    <div className="flex items-center gap-3 text-red-800 font-bold text-xl">
-                                        <div className="p-2 bg-red-100 rounded-full"><AlertTriangle size={24}/></div>
-                                        Not Eligible to Apply
+                                <div className="flex items-center gap-3 text-red-800 font-bold text-xl">
+                                    <div className="p-2 bg-red-100 rounded-full"><AlertTriangle size={24} /></div>
+                                    Not Eligible to Apply
+                                </div>
+                                <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-lg shadow-sm">
+                                    <h5 className="text-red-900 font-bold mb-2">Reason:</h5>
+                                    <p className="text-red-700 font-medium text-sm md:text-lg leading-relaxed">
+                                        {eligibilityReason || "You do not meet the academic or batch requirements for this position."}
+                                    </p>
+                                </div>
+                                <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+                                    <div className="flex items-center gap-2">
+                                        <Lock size={14} /> Application Locked
                                     </div>
-                                    <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-lg shadow-sm">
-                                        <h5 className="text-red-900 font-bold mb-2">Reason:</h5>
-                                        <p className="text-red-700 font-medium text-sm md:text-lg leading-relaxed">
-                                            {eligibilityReason || "You do not meet the academic or batch requirements for this position."}
-                                        </p>
+                                    <div>
+                                        Deadline: <span className="font-bold">{job.applicationDeadline}</span>
                                     </div>
-                                    <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
-                                        <div className="flex items-center gap-2">
-                                            <Lock size={14}/> Application Locked
-                                        </div>
-                                        <div>
-                                            Deadline: <span className="font-bold">{job.applicationDeadline}</span>
-                                        </div>
-                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -565,37 +565,45 @@ export const JobDetailView: React.FC<JobDetailViewProps> = ({
                                     <span className="block text-xs font-bold text-gray-400 uppercase mb-1">Last Date to Apply</span>
                                     <span className={`font-bold text-lg ${isExpired ? 'text-red-600' : 'text-gray-900'}`}>{job.applicationDeadline}</span>
                                 </div>
-                                
+
                                 <div className="w-full md:w-auto">
                                     {isExpired ? (
                                         <div className="px-8 py-3 bg-gray-200 text-gray-500 font-bold rounded-lg flex items-center justify-center gap-2 cursor-not-allowed w-full md:w-auto">
-                                            <Lock size={20}/> Applications Closed
+                                            <Lock size={20} /> Applications Closed
                                         </div>
                                     ) : isNotInterested ? (
                                         <div className="px-8 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg border border-gray-200 flex items-center justify-center gap-2 w-full md:w-auto">
-                                            <Ban size={20}/> Marked as Not Interested
+                                            <Ban size={20} /> Marked as Not Interested
                                         </div>
                                     ) : (
                                         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
                                             <button onClick={() => onNotInterested(job.id)} className="w-full md:w-auto flex-1 px-5 py-3 bg-white border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-100 transition-colors">
                                                 Not Interested
                                             </button>
-                                            
-                                            {job.externalLink ? (
-                                                <a 
-                                                    href={job.externalLink} 
-                                                    target="_blank" 
+
+                                            {!student.premiumActive ? (
+                                                <a
+                                                    href="/student/premium"
+                                                    className="w-full md:w-auto flex-[2] px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-lg hover:from-amber-600 hover:to-orange-700 transition-all shadow-md flex items-center justify-center gap-2 group"
+                                                >
+                                                    <Shield size={20} className="group-hover:scale-110 transition-transform" />
+                                                    Get Premium to Apply
+                                                </a>
+                                            ) : job.externalLink ? (
+                                                <a
+                                                    href={job.externalLink}
+                                                    target="_blank"
                                                     rel="noreferrer"
                                                     className="w-full md:w-auto flex-1 px-8 py-3 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md"
                                                 >
-                                                    Apply Externally <ExternalLink size={18}/>
+                                                    Apply Externally <ExternalLink size={18} />
                                                 </a>
                                             ) : (
-                                                <button 
-                                                    onClick={() => onApply(job.id)} 
+                                                <button
+                                                    onClick={() => onApply(job.id)}
                                                     className="w-full md:w-auto flex-[2] px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md flex items-center justify-center gap-2"
                                                 >
-                                                    Apply Now <Briefcase size={20}/>
+                                                    Apply Now <Briefcase size={20} />
                                                 </button>
                                             )}
                                         </div>

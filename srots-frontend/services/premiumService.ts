@@ -1,13 +1,11 @@
 import api from './api';
 
 export interface PremiumSubscriptionRequest {
-    months: number;
-    utr: string;
+    utrNumber: string;
 }
 
 export interface PremiumResponse {
     message: string;
-    expiryDate: string;
 }
 
 export const PremiumService = {

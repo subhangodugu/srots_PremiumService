@@ -13,7 +13,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { PremiumService } from '../../services/premiumService';
 import { AuthService } from '../../services/authService';
-import { updateUser } from '../../store/slices/authSlice';
+import { updateUser, loginFailure } from '../../store/slices/authSlice';
 import { toast } from 'react-hot-toast';
 
 const PremiumPage: React.FC = () => {
@@ -31,23 +31,15 @@ const PremiumPage: React.FC = () => {
     ];
 
     const handleSubscribe = async () => {
-        if (!selectedPlan || !utr) return;
+        if (!selectedPlan || !utr || !user) return;
 
         setIsSubmitting(true);
         try {
             const response = await PremiumService.subscribe({
-                months: selectedPlan.months,
-                utr: utr.trim()
+                utrNumber: utr.trim()
             });
 
             toast.success(response.message);
-
-            // Refresh Session
-            if (user) {
-                const updatedUser = await AuthService.getFullProfile(user.id);
-                dispatch(updateUser(updatedUser));
-            }
-
             setStep(4); // Success Step
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to activate premium. Please try again.');
@@ -149,9 +141,12 @@ const PremiumPage: React.FC = () => {
 
                                         <div className="bg-white p-6 rounded-2xl inline-block mb-8 mx-auto shadow-[0_0_50px_rgba(59,130,246,0.2)]">
                                             <img
-                                                src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SROTS_PREMIUM_PAYMENT"
+                                                src="/qr.png"
                                                 alt="Payment QR"
-                                                className="w-48 h-48 md:w-64 md:h-64"
+                                                className="w-48 h-48 md:w-64 md:h-64 rounded-xl"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SROTS_PREMIUM_PAYMENT";
+                                                }}
                                             />
                                         </div>
 
@@ -230,15 +225,20 @@ const PremiumPage: React.FC = () => {
                                         >
                                             <CheckCircle2 className="w-10 h-10" />
                                         </motion.div>
-                                        <h2 className="text-3xl font-bold mb-4">You're All Set!</h2>
+                                        <h2 className="text-3xl font-bold mb-4">Request Submitted!</h2>
                                         <p className="text-gray-400 mb-10 leading-relaxed">
-                                            Your premium subscription has been activated successfully. You now have full access to all premium features.
+                                            Your premium recharge request has been submitted with UTR <span className="text-white font-mono">{utr}</span>.
+                                            <br /><br />
+                                            Once verified, your account will be activated. <b>Please log in again in a few minutes</b> to access all features.
                                         </p>
                                         <button
-                                            onClick={() => window.location.href = '/student-portal'}
-                                            className="w-full py-4 rounded-xl bg-white text-black font-bold hover:bg-gray-200 transition-all"
+                                            onClick={() => {
+                                                dispatch(loginFailure('Please log in again to verify premium activation.'));
+                                                window.location.href = '/login';
+                                            }}
+                                            className="w-full py-4 rounded-xl bg-white text-black font-black hover:bg-gray-200 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
                                         >
-                                            Go to Dashboard
+                                            Finish & Back to Login
                                         </button>
                                     </div>
                                 )}

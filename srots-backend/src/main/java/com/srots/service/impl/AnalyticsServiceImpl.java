@@ -20,6 +20,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         private final ApplicationAnalyticsRepository appRepo;
         private final UserRepository userRepo;
         private final CollegeRepository collegeRepo;
+        private final StudentRepository studentRepoMain;
         private final JobMapper jobMapper;
 
         @Override
@@ -96,7 +97,13 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         public SystemAnalyticsDTO getSystemAnalytics() {
                 long totalColleges = collegeRepo.count();
                 long activeStudents = userRepo.countByRole(User.Role.STUDENT);
-                long expiringAccounts = 0L; // Placeholder
+
+                java.time.LocalDate next30 = java.time.LocalDate.now().plusDays(30);
+                long expiringAccounts = studentRepoMain.findAll().stream()
+                                .filter(s -> s.getPremiumExpiryDate() != null
+                                                && s.getPremiumExpiryDate().isBefore(next30))
+                                .count();
+
                 long totalJobs = jobRepo.count();
 
                 SystemStatsDTO stats = SystemStatsDTO.builder()

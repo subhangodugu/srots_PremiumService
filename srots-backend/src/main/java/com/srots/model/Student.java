@@ -11,8 +11,9 @@ public class Student {
     @Id
     private String id;
 
-    @Column(name = "user_id")
-    private String userId;
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     private String name;
     private String email;

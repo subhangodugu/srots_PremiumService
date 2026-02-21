@@ -1,5 +1,6 @@
 package com.srots.controller;
 
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,85 +48,111 @@ public class AuthController {
 	@Autowired
 	private StudentRepository studentRepository;
 
+	@Autowired
+	private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
 	@PostMapping("/login")
 	public ResponseEntity<?> authenticate(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
 		System.out.println("--- START AUTH DEBUG ---");
 		try {
-			// 1. Authenticate via AuthenticationManager (throws on failure)
+			// 1. Fetch User FIRST (to support Multi-Identifier and Restriction Check)
+			User user = userRepository.findByEmailOrUsername(request.getUsername(), request.getUsername())
+					.orElseThrow(() -> new RuntimeException("User not found"));
+
+			// 🚫 HARD BLOCK — ADMIN RESTRICTION on User
+			if (Boolean.TRUE.equals(user.getIsRestricted())) {
+				System.out.println("Blocked: User is RESTRICTED: " + user.getUsername());
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(java.util.Map.of(
+						"accountStatus", "RESTRICTED",
+						"message", "Your account has been restricted by admin"));
+			}
+
+			// 2. DEBUG LOGS FOR PASSWORD MATCHING
+			System.out.println("RAW PASSWORD RECEIVED: " + request.getPassword());
+			System.out.println("HASH IN DB: " + user.getPasswordHash());
+			boolean isMatch = passwordEncoder != null
+					&& passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
+			System.out.println("PASSWORD MATCH RESULT: " + isMatch);
+
+			// 3. Authenticate via AuthenticationManager
 			authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
-			// 2. Fetch User from DB
-			User user = userRepository.findByUsername(request.getUsername())
-					.orElseThrow(() -> new RuntimeException("User profile not found in DB"));
+			// ✅ NON-STUDENT → Direct access if authenticated
+			if (user.getRole() != User.Role.STUDENT) {
+				String token = jwtService.generateToken(user);
+				updateDeviceInfo(user, request, httpRequest);
 
-			// 🚀 SECURITY HARDENING: Block Students on HOLD status
-			String accountStatus = "ACTIVE"; // Default for Staff/Admin/College
-			if (user.getRole() == User.Role.STUDENT) {
-				com.srots.model.Student student = studentRepository.findByUserId(user.getId())
-						.orElse(null);
-
-				if (student != null) {
-					accountStatus = student.getAccountStatus();
-					if ("HOLD".equalsIgnoreCase(accountStatus)) {
-						return ResponseEntity.status(HttpStatus.FORBIDDEN)
-								.body("Your account is on HOLD. Please renew your premium subscription to access the portal.");
-					}
-				}
+				return ResponseEntity.ok(LoginResponse.builder()
+						.token(token)
+						.userId(user.getId())
+						.fullName(user.getFullName())
+						.username(user.getUsername())
+						.role(user.getRole().name())
+						.collegeId(user.getCollege() != null ? user.getCollege().getId() : null)
+						.accountStatus("ACTIVE")
+						.message("Login successful")
+						.build());
 			}
 
-			// 3. CAPTURE DEVICE INFO (With Fallback)
+			// ✅ STUDENT PREMIUM CHECK
+			com.srots.model.Student student = studentRepository.findByUserId(user.getId())
+					.orElseThrow(() -> new RuntimeException("Student profile not found"));
+
+			// 🚫 Step 4: Restricted Check on Student Entity
+			if ("RESTRICTED".equalsIgnoreCase(student.getAccountStatus())) {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(java.util.Map.of(
+						"accountStatus", "RESTRICTED",
+						"message", "Your account is restricted. Contact admin."));
+			}
+
+			// 🚀 Step 6: Compute Premium Validity
+			boolean premiumActive = false;
+			if (student.isPremiumActive() && student.getPremiumExpiryDate() != null &&
+					student.getPremiumExpiryDate().isAfter(LocalDate.now())) {
+				premiumActive = true;
+			}
+
+			// ✅ Step 7: Build Login Response for Student
+			String token = jwtService.generateToken(user);
+			updateDeviceInfo(user, request, httpRequest);
+
+			return ResponseEntity.ok(LoginResponse.builder()
+					.token(token)
+					.userId(user.getId())
+					.fullName(user.getFullName())
+					.username(user.getUsername())
+					.role("STUDENT")
+					.collegeId(user.getCollege() != null ? user.getCollege().getId() : null)
+					.accountStatus(premiumActive ? "ACTIVE" : "HOLD")
+					.premiumActive(premiumActive)
+					.message(premiumActive ? "Login successful" : "Premium required to access job features")
+					.build());
+
+		} catch (AuthenticationException e) {
+			System.out.println("Auth Failed for: " + request.getUsername() + " | Error: " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
+		} catch (Exception e) {
+			System.err.println("Internal Error during login: " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+		} finally {
+			System.out.println("--- END AUTH DEBUG ---");
+		}
+	}
+
+	private void updateDeviceInfo(User user, LoginRequest request, HttpServletRequest httpRequest) {
+		try {
 			String rawUserAgent = httpRequest.getHeader("User-Agent");
-			String currentDevice;
-
-			if (rawUserAgent != null && !rawUserAgent.isEmpty()) {
-				currentDevice = parseUserAgent(rawUserAgent);
-			} else if (request.getDeviceInfo() != null && !request.getDeviceInfo().isEmpty()) {
-				currentDevice = request.getDeviceInfo(); // Use manual input if no header
-			} else {
-				currentDevice = "Unknown Device";
-			}
+			String currentDevice = parseUserAgent(rawUserAgent);
 			String clientIp = getClientIp(httpRequest);
 
-			// 4. LOGIC: Check for New Device
-			// We only send the email if the device identity has changed
 			if (user.getLastDeviceInfo() == null || !currentDevice.equals(user.getLastDeviceInfo())) {
-				System.out.println("New device detected: " + currentDevice + " from IP: " + clientIp);
-
-				// Send Alert Email with both Device and IP info
 				sendLoginAlertEmail(user, currentDevice, clientIp);
-
-				// Update the database with the new device info
 				user.setLastDeviceInfo(currentDevice);
 				userRepository.save(user);
 			}
-
-			// 5. Generate Token
-			// String token = jwtService.generateToken(user.getUsername());
-			String token = jwtService.generateToken(user);
-
-			// 6. Build Response
-			LoginResponse response = new LoginResponse();
-			response.setToken(token);
-			response.setUserId(user.getId());
-			response.setFullName(user.getFullName());
-			response.setAccountStatus(accountStatus);
-
-			if (user.getRole() != null) {
-				response.setRole(user.getRole().name());
-			}
-
-			if (user.getCollege() != null) {
-				response.setCollegeId(user.getCollege().getId());
-			}
-
-			System.out.println("--- AUTH DEBUG COMPLETE: SUCCESS ---");
-			return ResponseEntity.ok(response);
-
-		} catch (AuthenticationException e) {
-			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+			System.err.println("Silent error updating device info: " + e.getMessage());
 		}
 	}
 

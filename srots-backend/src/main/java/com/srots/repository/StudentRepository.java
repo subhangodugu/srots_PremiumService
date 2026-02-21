@@ -10,4 +10,6 @@ public interface StudentRepository extends JpaRepository<Student, String> {
     List<Student> findByPremiumActiveTrueAndPremiumExpiryDateIsNotNull();
 
     java.util.Optional<Student> findByUserId(String userId);
+
+    java.util.Optional<Student> findByUserUsername(String username);
 }
