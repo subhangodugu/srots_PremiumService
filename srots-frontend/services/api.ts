@@ -1,61 +1,3 @@
-
-// import axios from 'axios';
-
-// /**
-//  * API Gateway for Srots Platform
-//  * Configured exclusively for Local Java Backend integration (Spring Boot).
-//  */
-
-// const api = axios.create({
-//     baseURL: 'http://localhost:8081/api/v1',
-//     timeout: 30000, 
-//     headers: {
-//         'Content-Type': 'application/json',
-//         'Accept': 'application/json'
-//     }
-// });
-
-// /**
-//  * AUTHENTICATION INTERCEPTOR
-//  * Requirement: "Added token to the payload/header"
-//  * Logic: Injects JWT Bearer token into every outgoing request from LocalStorage.
-//  */
-// api.interceptors.request.use((config) => {
-//     const token = localStorage.getItem('SROTS_AUTH_TOKEN');
-//     if (token && config.headers) {
-//         config.headers.Authorization = `Bearer ${token}`;
-//     }
-//     return config;
-// }, (error) => {
-//     return Promise.reject(error);
-// });
-
-// /**
-//  * RESPONSE INTERCEPTOR
-//  * Logic: Handles 401 errors from local Java server by purging all local data.
-//  */
-// api.interceptors.response.use(
-//   response => response,
-//   error => {
-//     const status = error.response?.status;
-//     const url = error.config?.url;
-
-//     // Only auto-logout for protected routes
-//     if (status === 401 && !url?.includes('/auth/login')) {
-//       console.warn('Session expired. Logging out.');
-
-//       localStorage.clear();
-//       window.location.hash = '';
-//       window.location.reload();
-//     }
-
-//     return Promise.reject(error);
-//   }
-// );
-
-
-// export default api;
-
 import axios from 'axios';
 
 /**
@@ -78,7 +20,8 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('SROTS_AUTH_TOKEN');
+    // STANDARD KEY: 'token' (Synced with authService.ts and App.tsx)
+    const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -98,12 +41,14 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url;
 
+    // Only handle 401 for non-auth requests
     if (status === 401 && !url?.includes('/auth/login') && !url?.includes('/auth/refresh')) {
       console.warn('Unauthorized (401) - Clearing session and redirecting to login');
 
-      // Clear ALL auth-related storage
-      localStorage.removeItem('SROTS_AUTH_TOKEN');
-      localStorage.removeItem('SROTS_USER_SESSION');
+      // Clear standardized auth keys
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('premiumActive');
 
       // Force clean login state
       window.location.hash = '';           // remove any hash/route

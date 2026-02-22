@@ -8,8 +8,8 @@ export interface BranchDistribution {
 }
 
 export interface PlacementProgress {
-    year: number;
-    month: number;
+    year?: number;
+    month?: number;
     label: string;  // month name e.g. "January"
     value: number;  // count of placed students
 }
@@ -67,19 +67,44 @@ export interface SystemAnalyticsResponse {
 // ── API calls ──────────────────────────────────────────────────────────────
 
 export const AnalyticsService = {
+    /**
+     * getOverview - Scoped based on user role (College or System-wide)
+     */
     async getOverview(): Promise<AnalyticsOverviewResponse> {
         try {
             const res = await api.get('/analytics/overview');
-            return res.data;
+
+            // Defensive check for empty or unexpected structure
+            if (!res.data) throw new Error('Empty response from analytics server');
+
+            return {
+                branchDistribution: res.data.branchDistribution || [],
+                placementProgress: res.data.placementProgress || [],
+                jobTypes: res.data.jobTypes || [],
+                stats: res.data.stats || { totalStudents: 0, placedStudents: 0, placementRate: 0, companiesVisited: 0 },
+                recentJobs: res.data.recentJobs || []
+            };
         } catch (error: any) {
             console.error('Error fetching analytics overview:', error.response?.data || error.message);
             throw error;
         }
     },
+
+    /**
+     * getSystemAnalytics - For Platform Admins
+     */
     async getSystemAnalytics(): Promise<SystemAnalyticsResponse> {
         try {
             const res = await api.get('/analytics/system');
-            return res.data;
+
+            if (!res.data) throw new Error('Empty response from platform analytics');
+
+            return {
+                stats: res.data.stats || { totalColleges: 0, activeStudents: 0, expiringAccounts: 0, totalJobs: 0 },
+                leaderboard: res.data.leaderboard || [],
+                placementProgress: res.data.placementProgress || [],
+                branchDistribution: res.data.branchDistribution || []
+            };
         } catch (error: any) {
             console.error('Error fetching system analytics:', error.response?.data || error.message);
             throw error;

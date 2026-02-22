@@ -1,147 +1,223 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-    CreditCard,
-    ArrowRight,
-    CheckCircle,
-    AlertCircle,
-    ShieldCheck,
-    QrCode,
-    Loader2
-} from 'lucide-react';
-import { PremiumService } from '../../services/premiumService';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { ArrowLeft, CreditCard, ShieldCheck, ChevronRight, AlertCircle, Loader2, CheckCircle2, Lock, QrCode } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const PremiumPayment: React.FC = () => {
-    const [utrNumber, setUtrNumber] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+/**
+ * PremiumPayment Component
+ * 
+ * Standardized premium activation page with premium glassmorphic aesthetic.
+ */
+export default function PremiumPayment() {
+    const [utr, setUtr] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (utrNumber.trim().length < 6) {
-            setError('UTR must be at least 6 characters.');
+    const handleActivate = async () => {
+        if (!utr || utr.length < 6) {
+            setError("Please enter a valid 12-digit UTR number");
             return;
         }
 
-        setIsSubmitting(true);
-        setError(null);
         try {
-            await PremiumService.subscribe({ utrNumber });
+            setLoading(true);
+            setError("");
+
+            await axios.post("/api/v1/premium/subscribe", {
+                utrNumber: utr,
+            });
+
             setSuccess(true);
+            localStorage.setItem("premiumActive", "true");
+
             setTimeout(() => {
-                alert("Premium Activated!");
-                window.location.href = "/student-dashboard";
+                navigate("/student-dashboard");
             }, 2000);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to activate premium. Please try again.');
+            console.error(err);
+            const msg = err.response?.data?.message || "Activation failed. Please check your UTR and try again.";
+            setError(msg);
         } finally {
-            setIsSubmitting(false);
+            setLoading(false);
         }
     };
 
-    if (success) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center"
-                >
-                    <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle size={40} />
-                    </div>
-                    <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tighter">Premium Activated!</h2>
-                    <p className="text-slate-500 font-medium">Your account is now ACTIVE. Redirecting you to your dashboard...</p>
-                </motion.div>
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-center text-white relative">
-                    <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20">
-                        <CreditCard size={32} />
-                    </div>
-                    <h1 className="text-2xl font-black uppercase tracking-tight">Activate Premium</h1>
-                    <p className="text-blue-100 text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">One-year access to all features</p>
-                </div>
+        <div className="min-h-screen bg-[#050510] text-white flex items-center justify-center p-6 font-sans selection:bg-blue-500/30">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
+            </div>
 
-                <div className="p-8">
-                    <div className="text-center mb-8">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Step 1: Scan & Pay</p>
-                        <div className="bg-slate-50 p-4 rounded-3xl border-2 border-dashed border-slate-200 inline-block mb-4">
-                            <img
-                                src="/qr.png"
-                                alt="Payment QR"
-                                className="w-48 h-48 rounded-xl bg-white"
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SROTS_PREMIUM_PAYMENT';
-                                }}
-                            />
-                        </div>
-                        <div className="flex items-center justify-center gap-2 text-slate-600 font-bold text-sm">
-                            <QrCode size={16} />
-                            <span>Scan with GPay / PhonePe / Paytm</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 mb-8">
-                        <div className="flex gap-3">
-                            <ShieldCheck className="text-blue-600 shrink-0" size={20} />
-                            <div>
-                                <h3 className="text-xs font-black text-blue-900 uppercase tracking-wider mb-1">Instant Activation</h3>
-                                <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                                    Enter your UTR number below after payment. Our system will activate your premium features immediately.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Step 2: Enter UTR</p>
-                            <div className="relative group">
-                                <AlertCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors" size={20} />
-                                <input
-                                    type="text"
-                                    value={utrNumber}
-                                    onChange={(e) => setUtrNumber(e.target.value)}
-                                    placeholder="Enter 12-digit UTR Number"
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 uppercase tracking-widest text-sm"
-                                    required
-                                />
-                            </div>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-xl relative"
+            >
+                <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/50">
+                    {/* Header */}
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 text-center relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from),_transparent_70%)] from-white/20"></div>
                         </div>
 
-                        {error && (
-                            <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-black uppercase text-center">
-                                {error}
-                            </div>
-                        )}
+                        <div className="relative z-10 flex flex-col items-center">
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 0.2 }}
+                                className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center mb-6 backdrop-blur-md border border-white/20 shadow-inner"
+                            >
+                                <CreditCard className="text-white" size={40} />
+                            </motion.div>
+                            <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Unlock Premium</h1>
+                            <p className="text-blue-100/70 text-xs font-bold uppercase tracking-[0.3em]">Full Professional Access</p>
+                        </div>
 
                         <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="w-full py-4 bg-slate-900 hover:bg-black text-white font-black rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+                            type="button"
+                            onClick={() => {
+                                localStorage.removeItem('token');
+                                localStorage.removeItem('role');
+                                localStorage.removeItem('premiumActive');
+                                window.location.href = '/login';
+                            }}
+                            className="absolute top-6 left-6 z-20 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all text-white/50 hover:text-white"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (
-                                <>Verify & Activate <ArrowRight size={18} /></>
-                            )}
+                            <ArrowLeft size={20} />
                         </button>
-                    </form>
+                    </div>
+
+                    <div className="p-10 space-y-10">
+                        {success ? (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center py-10 space-y-6"
+                            >
+                                <div className="w-24 h-24 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto border border-green-500/30">
+                                    <CheckCircle2 size={48} className="animate-bounce" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">Success!</h2>
+                                    <p className="text-slate-400 font-medium mt-2">Your premium access has been activated.</p>
+                                </div>
+                                <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest animate-pulse">
+                                    Finalizing configuration...
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <>
+                                {/* Payment Instructions */}
+                                <div className="flex flex-col md:flex-row gap-10 items-center">
+                                    <div className="flex-1 space-y-4">
+                                        <div className="flex items-start gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                            <div className="bg-blue-500/20 p-2 rounded-xl text-blue-400 shrink-0">
+                                                <QrCode size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-black text-white uppercase tracking-tight mb-1">Step 1: Scan & Pay</h3>
+                                                <p className="text-xs text-slate-400 font-medium leading-relaxed">Pay via GPay, PhonePe, or any UPI app using the QR code.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                            <div className="bg-amber-500/20 p-2 rounded-xl text-amber-400 shrink-0">
+                                                <ShieldCheck size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-black text-white uppercase tracking-tight mb-1">Step 2: Submit UTR</h3>
+                                                <p className="text-xs text-slate-400 font-medium leading-relaxed">Enter the 12-digit UTR number from your transaction details.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="shrink-0 relative group">
+                                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                                        <div className="relative bg-[#0a0a1a] p-4 rounded-3xl border border-white/10">
+                                            <img
+                                                src="/payment-qr.png"
+                                                alt="Payment QR"
+                                                className="w-40 h-40 rounded-xl"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=srots@upi&pn=SROTS&cu=INR';
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Activation Form */}
+                                <div className="space-y-6 pt-4 border-t border-white/5">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Transaction Identity (UTR)</label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                            <input
+                                                type="text"
+                                                value={utr}
+                                                onChange={(e) => setUtr(e.target.value)}
+                                                placeholder="Enter 12-digit UTR number"
+                                                className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {error && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -10 }}
+                                                className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400"
+                                            >
+                                                <AlertCircle size={20} className="shrink-0" />
+                                                <p className="text-xs font-bold leading-tight">{error}</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <button
+                                        onClick={handleActivate}
+                                        disabled={loading || !utr}
+                                        className="w-full py-5 bg-white text-black hover:bg-blue-50 text-base font-black rounded-2xl shadow-xl shadow-black/20 transition-all transform active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 size={24} className="animate-spin" /> Verifying...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Activate Securely <ChevronRight size={20} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Footer Info */}
+                    <div className="p-8 bg-black/20 border-t border-white/5 text-center">
+                        <div className="flex items-center justify-center gap-6 opacity-40">
+                            <ShieldCheck size={16} />
+                            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">
+                                SROTS ENCRYPTED GATEWAY • EST 2024
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.4em]">
-                        SECURE PAYMENT GATEWAY • SROTS
-                    </p>
+                <div className="mt-8 flex justify-center gap-8 text-slate-600 font-bold uppercase tracking-widest text-[9px]">
+                    <span className="hover:text-blue-400 cursor-pointer transition-colors">Safety Protocol</span>
+                    <span className="hover:text-blue-400 cursor-pointer transition-colors">Privacy Shield</span>
+                    <span className="hover:text-blue-400 cursor-pointer transition-colors">Contact Support</span>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
-};
-
-export default PremiumPayment;
+}

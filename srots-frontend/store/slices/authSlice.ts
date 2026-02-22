@@ -41,10 +41,14 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.error = null;
 
-      // Save both token and user session
+      // Save standardized session keys
+      localStorage.setItem('token', action.payload.token || localStorage.getItem('token') || '');
+      localStorage.setItem('role', action.payload.role || '');
+      localStorage.setItem('premiumActive', String(action.payload.premiumActive || false));
+
+      // Legacy compatibility
       localStorage.setItem('SROTS_USER_SESSION', JSON.stringify(action.payload));
       localStorage.setItem('SROTS_ACCOUNT_STATUS', action.payload.accountStatus || 'ACTIVE');
-      // Assuming AuthService.authenticateUser already saved the token
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -58,6 +62,10 @@ const authSlice = createSlice({
       state.error = null;
 
       // Clean ALL auth data
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('premiumActive');
+
       localStorage.removeItem('SROTS_AUTH_TOKEN');
       localStorage.removeItem('SROTS_USER_SESSION');
       localStorage.removeItem('SROTS_ACCOUNT_STATUS');
@@ -81,6 +89,7 @@ export const login = (credentials: { username: string; password?: string }) => a
   try {
     const user = await AuthService.authenticateUser(credentials.username, credentials.password);
     dispatch(loginSuccess(user));
+    return user; // Return user for caller
   } catch (err: any) {
     console.error('Authentication Error:', err);
     // Robust error message extraction
@@ -90,6 +99,7 @@ export const login = (credentials: { username: string; password?: string }) => a
       : (errorData?.message || 'Login failed. Please check your credentials.');
 
     dispatch(loginFailure(errorMessage));
+    throw new Error(errorMessage); // Re-throw for caller
   }
 };
 

@@ -7,7 +7,9 @@ export const AuthService = {
     const data = response.data;
 
     if (data.token) {
-      localStorage.setItem('SROTS_AUTH_TOKEN', data.token);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('premiumActive', String(data.premiumActive || false));
     }
 
     // Direct mapping for login response (no 'user' wrapper)

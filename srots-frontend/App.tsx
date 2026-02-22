@@ -33,31 +33,32 @@ const App: React.FC = () => {
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
 
+  // Standardized Auth Checks
+  const token = localStorage.getItem("token");
+  const premiumActive = localStorage.getItem("premiumActive") === "true";
+  const role = localStorage.getItem("role");
+
   // ────────────────────────────────────────────────
-  // Force logout + redirect if token is missing on mount/refresh
+  // Initial Auth Verification & Session Sync
   // ────────────────────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem('SROTS_AUTH_TOKEN');
-    const isOnHold = currentUser?.role === Role.STUDENT && currentUser?.accountStatus === 'HOLD';
-
-    if (!token && !isOnHold && currentUser) {
-      console.warn('No token found but user in Redux → forcing logout');
+    // If no token but user in Redux -> clear session
+    if (!token && currentUser) {
+      console.warn('No token found -> forcing logout');
       dispatch(logout());
-      navigate('/login', { replace: true });
+      return;
     }
 
-    if (token && !currentUser && !authLoading) {
-      console.warn('Token exists but no user in Redux → redirect to login to re-auth');
-      navigate('/login', { replace: true });
-    }
-  }, [currentUser, authLoading, dispatch, navigate]);
+    // If token exists but no user -> potentially redirect to login or show loader
+    // (Actual redirection handled by Route elements below for startup flow)
+  }, [currentUser, dispatch]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) return;
 
     try {
-      const response: any = await dispatch(login({ username, password }) as any).unwrap();
+      const response: any = await dispatch(login({ username, password }) as any);
 
       if (response.accountStatus === "RESTRICTED") {
         alert("Your account is restricted. Contact admin.");
@@ -69,13 +70,13 @@ const App: React.FC = () => {
         if (!response.premiumActive) {
           navigate("/premium-payment");
         } else {
-          navigate("/student-dashboard");
+          navigate("/student/jobs");
         }
       } else {
         navigate(getDefaultDashboard(response));
       }
     } catch (err: any) {
-      // Error handled by Redux slice
+      // Error handled by Redux slice (authError)
     }
   };
 
@@ -106,13 +107,16 @@ const App: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  const getDefaultDashboard = (user: User) => {
+  const getDefaultDashboard = (user: User | null) => {
+    if (!user) return '/login';
     switch (user.role) {
       case Role.ADMIN:
       case Role.SROTS_DEV:
         return '/admin/profile';
       case Role.STUDENT:
-        return user.accountStatus === 'HOLD' ? '/premium-payment' : '/student/jobs';
+        // Use currentUser state or fallback to localStorage for premiumActive
+        const isPremium = user.premiumActive || localStorage.getItem("premiumActive") === "true";
+        return !isPremium ? '/premium-payment' : '/student/jobs';
       case Role.CPH:
       case Role.STAFF:
         return '/cp/jobs';
@@ -203,7 +207,7 @@ const App: React.FC = () => {
               { label: 'Srots Dev', u: 'DEV_Praveen', p: 'DEV_PRAVEEN@8847', color: 'bg-slate-800', icon: Terminal },
               { label: 'College Head', u: 'SRM_CPADMIN_rajesh_tpo', p: 'SRM_CPADMIN_rajesh_tpo@5678', color: 'bg-purple-600', icon: UserCheck },
               { label: 'Staff', u: 'SRM_CPSTAFF_kiran', p: 'SRM_CPSTAFF_KIRAN@3322', color: 'bg-indigo-500', icon: Zap },
-              { label: 'Student', u: 'SRM_21701A0501', p: 'SRM_21701A0501_9012', color: 'bg-green-600', icon: GraduationCap }
+              { label: 'Student', u: 'SRM_21701A0501', p: 'SRM_21701A0501@8901', color: 'bg-green-600', icon: GraduationCap }
             ].map((acc) => (
               <button key={acc.u} onClick={() => quickLogin(acc.u, acc.p)} className={`${acc.color} hover:opacity-90 text-white p-4 rounded-2xl shadow-lg border border-white/10 flex flex-col items-center gap-2 transition-all active:scale-95`}>
                 <acc.icon size={24} />
@@ -270,8 +274,27 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <Routes>
-        <Route path="/" element={<Navigate to={getDefaultDashboard(currentUser!)} replace />} />
-        <Route path="/login" element={<Navigate to={getDefaultDashboard(currentUser!)} replace />} />
+        {/* ROOT ROUTE - Standardized Startup Logic */}
+        <Route
+          path="/"
+          element={
+            !token ? (
+              <Navigate to="/login" replace />
+            ) : role === "STUDENT" && !premiumActive ? (
+              <Navigate to="/premium-payment" replace />
+            ) : (
+              <Navigate to={getDefaultDashboard(currentUser!)} replace />
+            )
+          }
+        />
+
+        {/* LOGIN ROUTE */}
+        <Route
+          path="/login"
+          element={
+            currentUser ? <Navigate to="/" replace /> : <></>
+          }
+        />
 
         {/* Admin Portal */}
         <Route path="/admin/*" element={
@@ -331,9 +354,13 @@ const App: React.FC = () => {
         <Route path="/student-dashboard" element={<Navigate to="/student/jobs" replace />} />
 
         <Route path="/premium-payment" element={
-          <ProtectedRoute allowedRoles={[Role.STUDENT]}>
-            <PremiumPayment />
-          </ProtectedRoute>
+          !token ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <ProtectedRoute allowedRoles={[Role.STUDENT]}>
+              <PremiumPayment />
+            </ProtectedRoute>
+          )
         } />
 
         <Route path="/premium-required" element={<Navigate to="/premium-payment" replace />} />
@@ -344,7 +371,25 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="/unauthorized" element={<div className="min-h-screen flex items-center justify-center text-2xl font-bold text-red-600 uppercase tracking-tighter">Access Denied</div>} />
+        <Route path="/unauthorized" element={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-100 p-10 text-center">
+              <div className="w-20 h-20 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck size={40} />
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Access Denied</h1>
+              <p className="text-slate-500 text-sm font-medium leading-relaxed mb-8">
+                You do not have the required permissions to access this secure zone. Please contact your administrator if you believe this is an error.
+              </p>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full py-4 bg-slate-900 hover:bg-black text-white font-black rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[10px]"
+              >
+                Return to Safety
+              </button>
+            </div>
+          </div>
+        } />
         <Route path="*" element={<Navigate to={getDefaultDashboard(currentUser!)} replace />} />
       </Routes>
     </ErrorBoundary>
@@ -355,38 +400,37 @@ const App: React.FC = () => {
 // Protected Route Guard
 // ────────────────────────────────────────────────
 const ProtectedRoute: React.FC<{ children: JSX.Element; allowedRoles?: Role[] }> = ({ children, allowedRoles }) => {
-  const { user: currentUser } = useAppSelector(state => state.auth);
+  const { user: currentUser, loading: authLoading } = useAppSelector(state => state.auth);
   const location = useLocation();
 
-  const token = localStorage.getItem('SROTS_AUTH_TOKEN');
-  const accountStatus = localStorage.getItem('SROTS_ACCOUNT_STATUS') || currentUser?.accountStatus;
-  const isOnHold = accountStatus === 'HOLD';
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role') as Role;
+  const premiumActive = localStorage.getItem('premiumActive') === 'true';
 
-  const isAccessingPremium = ['/premium-payment', '/premium-required', '/premium'].includes(location.pathname);
-
-  // If no user AND NOT on hold (HOLD users might have session but limited access)
-  if (!currentUser && !isOnHold) {
-    return <Navigate to="/login" replace />;
+  // If rehydrating auth state, show a subtle loader
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+      </div>
+    );
   }
 
-  // allow HOLD to see QR page even without token (since HOLD users might be restored without token)
-  if (!token && isOnHold && isAccessingPremium) {
-    return children;
+  // If no token, always force login
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // block others if no token
-  if (!token && !isOnHold) {
-    return <Navigate to="/login" replace />;
-  }
+  // If student is on HOLD (not premium), they can ONLY access premium routes
+  const isPremiumRoute = ['/premium-payment', '/premium-required', '/premium'].includes(location.pathname);
 
-  // role check
-  if (allowedRoles && !allowedRoles.includes(currentUser?.role as any)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  // PREMIUM GUARD: Redirect students on HOLD to payment if they try to access other pages
-  if (isOnHold && !isAccessingPremium) {
+  if (role === Role.STUDENT && !premiumActive && !isPremiumRoute) {
     return <Navigate to="/premium-payment" replace />;
+  }
+
+  // Role check
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

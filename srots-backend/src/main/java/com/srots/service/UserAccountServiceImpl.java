@@ -121,9 +121,10 @@ public class UserAccountServiceImpl implements UserAccountService {
 		User user = new User();
 
 		College college = null;
-		if (dto.getCollegeId() != null) {
-			college = collegeRepository.findById(dto.getCollegeId())
-					.orElseThrow(() -> new RuntimeException("College not found"));
+		String cId = dto.getCollegeId();
+		if (cId != null) {
+			college = collegeRepository.findById(cId)
+					.orElseThrow(() -> new RuntimeException("College not found for ID: " + cId));
 		}
 
 		// NEW: Roll Number Validation for Students
@@ -142,9 +143,15 @@ public class UserAccountServiceImpl implements UserAccountService {
 		String finalUsername = generateUsername(dto, role, college);
 		String rawPassword = generatePassword(finalUsername, dto.getAadhaar(), role);
 
-		String userId = (role == User.Role.STUDENT && dto.getStudentProfile() != null)
-				? (college.getCode() + "_" + dto.getStudentProfile().getRollNumber())
-				: UUID.randomUUID().toString();
+		String userId;
+		if (role == User.Role.STUDENT && dto.getStudentProfile() != null) {
+			if (college == null || college.getCode() == null) {
+				throw new RuntimeException("College code is required for student ID generation.");
+			}
+			userId = college.getCode() + "_" + dto.getStudentProfile().getRollNumber();
+		} else {
+			userId = UUID.randomUUID().toString();
+		}
 
 		user.setId(userId);
 		user.setUsername(finalUsername);

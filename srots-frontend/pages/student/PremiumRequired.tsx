@@ -1,5 +1,6 @@
 import React from "react";
-import { Lock, CreditCard, ChevronRight, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Lock, CreditCard, ChevronRight, AlertCircle, ArrowLeft } from "lucide-react";
 
 /**
  * PremiumRequired Component
@@ -8,9 +9,25 @@ import { Lock, CreditCard, ChevronRight, AlertCircle } from "lucide-react";
  * due to inactive or expired premium subscriptions.
  */
 const PremiumRequired: React.FC = () => {
+    const navigate = useNavigate();
+
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden text-center">
+            <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden text-center relative">
+                {/* 🔙 BACK BUTTON */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('role');
+                        localStorage.removeItem('premiumActive');
+                        window.location.href = '/login';
+                    }}
+                    className="absolute top-6 left-6 z-10 text-xs font-bold text-white/70 hover:text-white transition-colors flex items-center gap-1"
+                >
+                    <ArrowLeft size={14} /> Back to Login
+                </button>
+
                 {/* Header Section */}
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 text-center relative">
                     <div className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-sm">

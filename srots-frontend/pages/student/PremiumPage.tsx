@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
     Diamond,
     CheckCircle2,
@@ -7,7 +8,8 @@ import {
     Zap,
     Rocket,
     ShieldCheck,
-    AlertCircle
+    AlertCircle,
+    ArrowLeft
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
@@ -19,6 +21,7 @@ import { toast } from 'react-hot-toast';
 const PremiumPage: React.FC = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state: RootState) => state.auth);
+    const navigate = useNavigate();
     const [selectedPlan, setSelectedPlan] = useState<{ months: number; price: number } | null>(null);
     const [utr, setUtr] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +54,20 @@ const PremiumPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#050510] text-white p-6 md:p-12 font-sans selection:bg-blue-500/30">
             <div className="max-w-6xl mx-auto">
+                {/* 🔙 BACK BUTTON */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('role');
+                        localStorage.removeItem('premiumActive');
+                        window.location.href = '/login';
+                    }}
+                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors mb-8 flex items-center gap-2 font-bold"
+                >
+                    <ArrowLeft size={18} /> Back to Login
+                </button>
+
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

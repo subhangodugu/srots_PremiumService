@@ -41,7 +41,7 @@ const RenewalModal: React.FC<RenewalModalProps> = ({ isOpen, onClose }) => {
         try {
             const response = await PremiumService.subscribe({
                 months: selectedMonths,
-                utr: utr.trim()
+                utrNumber: utr.trim()
             });
 
             toast.success(response.message);

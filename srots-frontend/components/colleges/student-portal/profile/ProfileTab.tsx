@@ -498,11 +498,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ student, profileData, on
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
         </div>
         <div className="text-center md:text-left">
-          <h2 className="text-2xl font-bold text-gray-900">{localData.fullName}</h2>
-          <p className="text-gray-500 font-medium">{localData.rollNumber} • {localData.branch} • {localData.batch} Batch</p>
+          <h2 className="text-2xl font-bold text-gray-900">{localData.fullName || student.fullName || 'Student'}</h2>
+          <p className="text-gray-500 font-medium">{localData.rollNumber || 'N/A'} • {localData.branch || 'N/A'} • {localData.batch || 'N/A'} Batch</p>
           <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded">{localData.course}</span>
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">{localData.gender}</span>
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded">{localData.course || 'N/A'}</span>
+            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">{localData.gender || 'N/A'}</span>
           </div>
         </div>
       </div>
@@ -511,17 +511,17 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ student, profileData, on
         <div className="bg-white p-6 rounded-xl border shadow-sm">
           <h3 className="text-sm font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><UserIcon size={16} /> About (Official Record)</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><label className="text-xs text-gray-500">Roll Number</label><p className="font-bold">{localData.rollNumber}</p></div>
-            <div><label className="text-xs text-gray-500">Full Name</label><p className="font-bold">{localData.fullName}</p></div>
-            <div><label className="text-xs text-gray-500">Branch</label><p className="font-bold">{localData.branch}</p></div>
-            <div><label className="text-xs text-gray-500">Course</label><p className="font-bold">{localData.course}</p></div>
-            <div><label className="text-xs text-gray-500">College</label><p className="font-bold truncate" title={localData.collegeName}>{localData.collegeName}</p></div>
-            <div><label className="text-xs text-gray-500">Passed Out Year</label><p className="font-bold">{localData.batch}</p></div>
-            <div><label className="text-xs text-gray-500">Nationality</label><p className="font-bold">{localData.nationality}</p></div>
-            <div><label className="text-xs text-gray-500">Religion</label><p className="font-bold">{localData.religion}</p></div>
-            <div className="col-span-2"><label className="text-xs text-gray-500">Aadhaar Number</label><p className="font-bold font-mono text-gray-800">{localData.aadhaarNumber}</p></div>
-            <div><label className="text-xs text-gray-500">Date of Birth</label><p className="font-bold">{localData.dob}</p></div>
-            <div><label className="text-xs text-gray-500">Placement Cycle</label><p className="font-bold">{localData.placementCycle}</p></div>
+            <div><label className="text-xs text-gray-500">Roll Number</label><p className="font-bold">{localData.rollNumber || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Full Name</label><p className="font-bold">{localData.fullName || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Branch</label><p className="font-bold">{localData.branch || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Course</label><p className="font-bold">{localData.course || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">College</label><p className="font-bold truncate" title={localData.collegeName}>{localData.collegeName || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Passed Out Year</label><p className="font-bold">{localData.batch || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Nationality</label><p className="font-bold">{localData.nationality || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Religion</label><p className="font-bold">{localData.religion || 'N/A'}</p></div>
+            <div className="col-span-2"><label className="text-xs text-gray-500">Aadhaar Number</label><p className="font-bold font-mono text-gray-800">{localData.aadhaarNumber || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Date of Birth</label><p className="font-bold">{localData.dob || 'N/A'}</p></div>
+            <div><label className="text-xs text-gray-500">Placement Cycle</label><p className="font-bold">{localData.placementCycle || 'N/A'}</p></div>
           </div>
         </div>
 
