@@ -10,5 +10,4 @@ public class AddressRequest {
 	private String state;
 	private String zip;
 	private String country;
-
 }

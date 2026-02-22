@@ -12,6 +12,15 @@ public class PremiumController {
 
     private final PremiumService premiumService;
 
+    @PostMapping("/create-order")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<?> createOrder(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails user)
+            throws com.razorpay.RazorpayException {
+
+        return ResponseEntity.ok(premiumService.createOrder(user.getUsername()));
+    }
+
     @PostMapping("/subscribe")
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<?> subscribe(

@@ -7,9 +7,9 @@ import {
     Info, Star, Users, Heart, Shield, Ban, GraduationCap
 } from 'lucide-react';
 import { Job, User, MarkFormat } from '../../../../types';
-import { JobService } from '../../../../services/jobService';
 import { ALL_PROFILE_FIELDS, AVAILABLE_BATCHES, COMMON_PROFILE_FIELD_KEYS } from '../../../../constants';
 import { FieldSelector } from '../../shared/FieldSelector';
+import { CollegeService } from '../../../../services/collegeService';
 
 /**
  * Component: JobWizard
@@ -85,11 +85,16 @@ export const JobWizard: React.FC<JobWizardProps> = ({
             setStep(1);
             setFormErrors({});
 
-            // Fetch branches from backend via JobService
+            // Fetch branches from backend via CollegeService
             if (user?.collegeId) {
-                // You'll need to add a method to JobService to get college branches
-                // For now, using a placeholder - backend should provide this
-                setCollegeBranches(['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT']); // TODO: Fetch from backend
+                CollegeService.getCollegeById(user.collegeId).then(college => {
+                    if (college?.branches) {
+                        setCollegeBranches(college.branches.map(b => b.code));
+                    }
+                }).catch(err => {
+                    console.error("Failed to fetch college branches", err);
+                    setCollegeBranches(['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT']); // Fallback
+                });
             }
         }
     }, [isOpen, isEditing, initialData, user?.collegeId]);

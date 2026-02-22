@@ -33,7 +33,8 @@
 //   token?: string;                // not in DB – auth only
 //   avatar?: string;               // DB: avatar_url
 //   createdAt?: string;            // DB: created_at
-//   updatedAt?: string;            // DB: updated_at
+// DB: created_at
+//   updatedAt?: string;            // DB: 'updated_at'
 
 //   // Security & Flags
 //   isRestricted?: boolean;        // DB: is_restricted

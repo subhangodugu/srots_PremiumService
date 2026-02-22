@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,10 +23,9 @@ const PremiumPage: React.FC = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state: RootState) => state.auth);
     const navigate = useNavigate();
-    const [selectedPlan, setSelectedPlan] = useState<{ months: number; price: number } | null>(null);
-    const [utr, setUtr] = useState('');
+    const [selectedPlan, setSelectedPlan] = useState<{ months: number; price: number; label: string; icon: React.ReactNode } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [step, setStep] = useState(1); // 1: Select Plan, 2: Payment, 3: Verification
+    const [step, setStep] = useState(1); // 1: Select Plan, 2: Payment, 3: Success
 
     const plans = [
         { months: 3, price: 199, label: 'Standard', icon: <Zap className="w-6 h-6" /> },
@@ -33,23 +33,42 @@ const PremiumPage: React.FC = () => {
         { months: 12, price: 599, label: 'Ultimate', icon: <Diamond className="w-6 h-6" /> },
     ];
 
-    const handleSubscribe = async () => {
-        if (!selectedPlan || !utr || !user) return;
+    const handleRazorpayPayment = async () => {
+        if (!selectedPlan || !user) return;
 
         setIsSubmitting(true);
         try {
-            const response = await PremiumService.subscribe({
-                utrNumber: utr.trim()
-            });
+            const res = await axios.post("/api/v1/premium/create-order");
+            const data = res.data;
 
-            toast.success(response.message);
-            setStep(4); // Success Step
+            const options = {
+                key: data.key,
+                amount: data.amount,
+                currency: "INR",
+                name: "SROTS Premium",
+                description: `Unlock ${selectedPlan.label} Access`,
+                order_id: data.orderId,
+                handler: function (response: any) {
+                    setStep(4); // Success Step
+                },
+                prefill: {
+                    name: user.fullName || "",
+                    email: user.email || "",
+                },
+                theme: {
+                    color: "#2563eb",
+                },
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.open();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to activate premium. Please try again.');
+            toast.error("Failed to initiate payment. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-[#050510] text-white p-6 md:p-12 font-sans selection:bg-blue-500/30">
@@ -150,83 +169,28 @@ const PremiumPage: React.FC = () => {
                                 {step === 2 && (
                                     <div className="text-center">
                                         <h2 className="text-2xl font-bold mb-6 flex items-center justify-center gap-2 text-blue-400">
-                                            <CreditCard className="w-6 h-6" /> Complete Payment
+                                            <CreditCard className="w-6 h-6" /> Confirm Payment
                                         </h2>
-                                        <p className="text-gray-400 mb-8">
-                                            Scan the QR code below to pay <span className="text-white font-bold">₹{selectedPlan?.price}</span> for <span className="text-white font-bold">{selectedPlan?.months} Months</span>
+                                        <p className="text-gray-400 mb-8 leading-relaxed">
+                                            You are about to subscribe to the <span className="text-white font-bold">{selectedPlan?.label}</span> plan for <span className="text-white font-bold">₹{selectedPlan?.price}</span>.
+                                            <br />This will unlock all premium features for <span className="text-white font-bold">{selectedPlan?.months} months</span>.
                                         </p>
 
-                                        <div className="bg-white p-6 rounded-2xl inline-block mb-8 mx-auto shadow-[0_0_50px_rgba(59,130,246,0.2)]">
-                                            <img
-                                                src="/qr.png"
-                                                alt="Payment QR"
-                                                className="w-48 h-48 md:w-64 md:h-64 rounded-xl"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SROTS_PREMIUM_PAYMENT";
-                                                }}
-                                            />
-                                        </div>
-
-                                        <div className="flex gap-4">
+                                        <div className="space-y-4">
                                             <button
-                                                onClick={() => setStep(1)}
-                                                className="flex-1 py-4 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-bold transition-all"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={() => setStep(3)}
-                                                className="flex-[2] py-4 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold transition-all shadow-lg shadow-blue-500/20"
-                                            >
-                                                Continue to Verification
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {step === 3 && (
-                                    <div>
-                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-purple-400">
-                                            <ShieldCheck className="w-6 h-6" /> Verify Payment
-                                        </h2>
-                                        <p className="text-gray-400 mb-8">
-                                            Enter the 10+ character UTR / Transaction ID from your payment confirmation.
-                                        </p>
-
-                                        <div className="space-y-6 mb-8">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Transaction ID (UTR)</label>
-                                                <input
-                                                    type="text"
-                                                    value={utr}
-                                                    onChange={(e) => setUtr(e.target.value)}
-                                                    placeholder="Ex: 123456789012"
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 focus:outline-none focus:border-blue-500 transition-all text-xl tracking-widest uppercase"
-                                                />
-                                            </div>
-
-                                            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 text-sm text-blue-300">
-                                                <AlertCircle className="w-5 h-5 shrink-0" />
-                                                <p>Our team will verify this UTR. Your account will be activated instantly upon submission.</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-4">
-                                            <button
-                                                onClick={() => setStep(2)}
-                                                disabled={isSubmitting}
-                                                className="flex-1 py-4 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-bold transition-all disabled:opacity-50"
-                                            >
-                                                Back
-                                            </button>
-                                            <button
-                                                onClick={handleSubscribe}
-                                                disabled={isSubmitting || utr.length < 10}
-                                                className="flex-[2] py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                onClick={handleRazorpayPayment}
+                                                className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
                                             >
                                                 {isSubmitting ? (
                                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                ) : 'Activate Premium'}
+                                                ) : <><CreditCard className="w-5 h-5" /> Pay Now with Razorpay</>}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setStep(1)}
+                                                className="w-full py-4 px-6 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-bold transition-all text-gray-400"
+                                            >
+                                                Cancel
                                             </button>
                                         </div>
                                     </div>
@@ -242,20 +206,19 @@ const PremiumPage: React.FC = () => {
                                         >
                                             <CheckCircle2 className="w-10 h-10" />
                                         </motion.div>
-                                        <h2 className="text-3xl font-bold mb-4">Request Submitted!</h2>
+                                        <h2 className="text-3xl font-bold mb-4">Payment Successful!</h2>
                                         <p className="text-gray-400 mb-10 leading-relaxed">
-                                            Your premium recharge request has been submitted with UTR <span className="text-white font-mono">{utr}</span>.
+                                            Your premium access has been activated successfully.
                                             <br /><br />
-                                            Once verified, your account will be activated. <b>Please log in again in a few minutes</b> to access all features.
+                                            Please log in again or refresh the dashboard to access all exclusive features.
                                         </p>
                                         <button
                                             onClick={() => {
-                                                dispatch(loginFailure('Please log in again to verify premium activation.'));
-                                                window.location.href = '/login';
+                                                navigate('/student-dashboard');
                                             }}
                                             className="w-full py-4 rounded-xl bg-white text-black font-black hover:bg-gray-200 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
                                         >
-                                            Finish & Back to Login
+                                            Go to Dashboard
                                         </button>
                                     </div>
                                 )}
