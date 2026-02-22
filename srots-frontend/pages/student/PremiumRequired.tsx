@@ -54,7 +54,7 @@ const PremiumRequired: React.FC = () => {
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Scan to Pay</p>
                             <div className="bg-slate-50 p-4 rounded-3xl border-2 border-dashed border-slate-200 inline-block mb-4 hover:border-blue-300 transition-colors">
                                 <img
-                                    src="/payment-qr.png"
+                                    src="/qr.png"
                                     alt="Payment QR Code"
                                     className="w-48 h-48 rounded-xl bg-white shadow-sm"
                                     onError={(e) => {

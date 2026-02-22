@@ -129,9 +129,12 @@ const RenewalModal: React.FC<RenewalModalProps> = ({ isOpen, onClose }) => {
                         <div className="text-center">
                             <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-lg shadow-blue-500/10">
                                 <img
-                                    src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SROTS_PREMIUM_RENEWAL"
+                                    src="/qr.png"
                                     alt="QR"
                                     className="w-40 h-40"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SROTS_PREMIUM_RENEWAL";
+                                    }}
                                 />
                             </div>
                             <p className="text-gray-400 text-sm mb-6">Scan to pay for <strong>{selectedMonths} Months</strong> extension.</p>

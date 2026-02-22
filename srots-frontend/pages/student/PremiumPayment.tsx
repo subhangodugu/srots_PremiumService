@@ -139,7 +139,7 @@ export default function PremiumPayment() {
                                         <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                                         <div className="relative bg-[#0a0a1a] p-4 rounded-3xl border border-white/10">
                                             <img
-                                                src="/payment-qr.png"
+                                                src="/qr.png"
                                                 alt="Payment QR"
                                                 className="w-40 h-40 rounded-xl"
                                                 onError={(e) => {
